@@ -1,203 +1,213 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lab — Derek Werderitch</title>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<title>Round Loom Weaving</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:'Nunito',Arial,sans-serif;background:#666;color:#111;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 0 24px}
 
-    body {
-      font-family: 'Nunito', Arial, sans-serif;
-      background: #b0b0b0;
-      color: #111;
-      min-height: 100vh;
-    }
+  .header{width:100%;background:#D01012;padding:8px 20px;display:flex;align-items:center;gap:14px;margin-bottom:0}
+  .header h1{color:#fff;font-size:1.05em;font-weight:900;letter-spacing:3px;text-transform:uppercase;margin:0}
 
-    .header {
-      background: #D01012;
-      padding: 10px 24px;
-      display: flex;
-      align-items: center;
-    }
+  .subbar{width:100%;background:#1E3A8A;padding:5px 20px;margin-bottom:18px}
+  .subtitle{color:#fff;font-size:.68em;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
 
-    .header h1 {
-      color: #fff;
-      font-size: 1.05em;
-      font-weight: 900;
-      letter-spacing: 3px;
-      text-transform: uppercase;
-      margin: 0;
-    }
+  .global{display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;justify-content:center;font-size:.75em;font-weight:900;color:#111;letter-spacing:1px;text-transform:uppercase;border:3px solid #111;padding:6px 16px;background:#b0b0b0}
+  .global input[type=range]{width:90px;accent-color:#D01012}
 
-    .subbar {
-      background: #1E3A8A;
-      padding: 5px 24px;
-      margin-bottom: 24px;
-    }
+  .looms{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;align-items:flex-start;padding:0 12px}
 
-    .subbar p {
-      color: #fff;
-      font-size: 0.68em;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-    }
+  .loom-wrap{display:flex;flex-direction:column;align-items:center;border:3px solid #111;background:#b0b0b0}
+  .loom-label{width:100%;padding:6px 12px;font-size:.75em;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#fff;text-align:center}
+  .even .loom-label{background:#D01012}
+  .odd  .loom-label{background:#1E3A8A}
 
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-      padding: 0 20px 32px;
-      max-width: 860px;
-      margin: 0 auto;
-    }
+  canvas{display:block;background:#D4A574;border-top:3px solid #111;border-bottom:3px solid #111}
 
-    .card {
-      display: flex;
-      flex-direction: column;
-      text-decoration: none;
-      color: #111;
-      background: #b0b0b0;
-      border: 3px solid #111;
-    }
+  .controls{display:flex;gap:8px;align-items:center;padding:8px 12px;width:100%;justify-content:center}
 
-    .card-header {
-      background: #1E3A8A;
-      padding: 6px 12px;
-    }
+  .btn{padding:5px 14px;border:2px solid #111;background:#b0b0b0;cursor:pointer;font-family:'Nunito',Arial,sans-serif;font-size:.76em;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#111}
+  .btn:hover{background:#111;color:#fff}
+  .even .play-btn{border-color:#D01012;color:#D01012}
+  .even .play-btn:hover{background:#D01012;color:#fff}
+  .odd  .play-btn{border-color:#1E3A8A;color:#1E3A8A}
+  .odd  .play-btn:hover{background:#1E3A8A;color:#fff}
 
-    .card-header span {
-      color: #fff;
-      font-size: 0.72em;
-      font-weight: 900;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-    }
+  .info{display:none}
 
-    .card-body {
-      flex: 1;
-      padding: 12px 14px;
-      background: #D4A574;
-      border-top: 3px solid #111;
-      border-bottom: 3px solid #111;
-    }
+  .legend{font-size:.67em;font-weight:700;color:#444;text-align:center;line-height:1.6;padding:7px 10px;letter-spacing:.5px;text-transform:uppercase;border-top:2px solid #ddd;width:100%;max-width:240px}
 
-    .card-body i {
-      font-size: 22px;
-      color: #111;
-      display: flex;
-      flex-direction: column;
-      margin-bottom: 8px;
-    }
-
-    .card-title {
-      font-size: 0.95em;
-      font-weight: 900;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-
-    .card-desc {
-      font-size: 0.72em;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      color: #444;
-    }
-
-    .card-footer {
-      margin-top: auto;
-      padding: 5px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-    }
-
-    .card-footer span {
-      font-size: 0.68em;
-      font-weight: 900;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: #555;
-    }
-
-    .card:hover .card-header { background: #D01012; }
-    .card:hover .card-footer span { color: #111; }
-
-    .placeholder {
-      border: 3px dashed #888;
-      padding: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .placeholder p {
-      font-size: 0.72em;
-      font-weight: 900;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      color: #777;
-    }
-
-    footer {
-      padding: 0 20px 20px;
-      font-size: 0.65em;
-      font-weight: 700;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-      color: #666;
-      text-align: center;
-    }
-
-    footer a { color: #666; }
-  </style>
+  .wc{display:flex;align-items:center;gap:6px;font-size:.75em;font-weight:900;letter-spacing:1px;text-transform:uppercase}
+  .wc input{width:48px;padding:3px 4px;border:2px solid #111;background:#b0b0b0;font-family:'Nunito',Arial,sans-serif;font-weight:700;font-size:.95em;text-align:center}
+</style>
 </head>
 <body>
 
-  <div class="header">
-    <h1>Lab</h1>
-  </div>
-  <div class="subbar">
-    <p>Small experiments in making, teaching, and play</p>
-  </div>
+<div class="header">
+  <h1>Round Loom Weaving</h1>
+</div>
+<div class="subbar">
+  <div class="subtitle">One continuous spiral — odd warp count naturally flips over/under phase each lap</div>
+</div>
 
-  <div class="grid">
+<div class="global">
+  Speed: <input type="range" id="speed" min="1" max="60" value="20">
+  <button class="btn" onclick="resetAll()">Reset Both</button>
+  <button class="btn" onclick="toggleAll()">Play / Pause</button>
+</div>
 
-    <a class="card" href="stringsound/">
-      <div class="card-header"><span>Simulation</span></div>
-      <div class="card-body">
-        <i class="ti ti-circles" aria-hidden="true"></i>
-        <p class="card-title">String &amp; sound</p>
-        <p class="card-desc">Nail string traversal simulation</p>
-      </div>
-      <div class="card-footer"><span>Open →</span></div>
-    </a>
-
-    <a class="card" href="roundloom/">
-      <div class="card-header"><span>Teaching tool</span></div>
-      <div class="card-body">
-        <i class="ti ti-rotate-clockwise" aria-hidden="true"></i>
-        <p class="card-title">Round loom weaving</p>
-        <p class="card-desc">Visualize even vs. odd spoke counts in circular weaving</p>
-      </div>
-      <div class="card-footer"><span>Open →</span></div>
-    </a>
-
-    <!-- add more cards here, copy a card block above -->
-
-    <div class="placeholder">
-      <p>More coming</p>
+<div class="looms">
+  <div class="loom-wrap even">
+    <div class="loom-label">⚠ Even Warp — Phase Repeats</div>
+    <canvas id="evenCanvas" width="300" height="300"></canvas>
+    <div class="controls">
+      <div class="wc">Warps: <input type="number" id="evenWarp" value="12" min="4" max="28" step="2" onchange="resetLoom('even')"></div>
+      <button class="btn play-btn" id="evenBtn" onclick="toggleLoom('even')">▶ Play</button>
+      <div class="info" id="evenInfo">—</div>
     </div>
-
+    <div class="legend">Even crossings per lap — same phase repeats, weave piles on itself</div>
   </div>
 
-  <footer>
-    Made by Derek Werderitch &middot; <a href="https://drwerderitch.github.io">drwerderitch.github.io</a>
-  </footer>
+  <div class="loom-wrap odd">
+    <div class="loom-label">✓ Odd Warp — Phase Flips</div>
+    <canvas id="oddCanvas" width="300" height="300"></canvas>
+    <div class="controls">
+      <div class="wc">Warps: <input type="number" id="oddWarp" value="13" min="5" max="29" step="2" onchange="resetLoom('odd')"></div>
+      <button class="btn play-btn" id="oddBtn" onclick="toggleLoom('odd')">▶ Play</button>
+      <div class="info" id="oddInfo">—</div>
+    </div>
+    <div class="legend">Odd crossings per lap — phase flips each lap, locking the weave</div>
+  </div>
+</div>
 
+<script>
+const CX=150,CY=150,FRAME_R=128;
+const WARP_W=6,WEFT_W=5,PEG_R=5;
+const WARP_COLOR='#D3D3D3';
+const WEFT_COLOR='#1E40AF';
+const PITCH=WEFT_W+2;
+const R_INNER=14;
+const SPL=360;
+
+const S={even:{playing:false,angle:0,tid:null},odd:{playing:false,angle:0,tid:null}};
+
+function warpN(t){return parseInt(document.getElementById(t+'Warp').value)||12;}
+function spokeAngle(i,n){return (2*Math.PI*i/n)-Math.PI/2;}
+function spiralR(a){return R_INNER+(a/(2*Math.PI))*PITCH;}
+function maxAngle(){return ((FRAME_R-R_INNER)/PITCH)*2*Math.PI;}
+function totalCrossings(angle,n){return Math.floor(angle/(2*Math.PI/n));}
+function isOver(c){return c%2===0;}
+
+function spiralPts(maxA){
+  const pts=[],dA=(2*Math.PI)/SPL;
+  for(let a=0;a<=maxA+1e-9;a+=dA){
+    const aa=Math.min(a,maxA);
+    const r=spiralR(aa);
+    pts.push({x:CX+r*Math.cos(aa-Math.PI/2),y:CY+r*Math.sin(aa-Math.PI/2),a:aa});
+  }
+  return pts;
+}
+
+function crossingA(c,n){return c*(2*Math.PI/n);}
+
+function drawSegment(ctx,pts,i0,i1){
+  if(i0>=i1)return;
+  ctx.beginPath();ctx.moveTo(pts[i0].x,pts[i0].y);
+  for(let i=i0+1;i<=i1;i++)ctx.lineTo(pts[i].x,pts[i].y);
+  ctx.stroke();
+}
+
+function drawAll(type){
+  const cv=document.getElementById(type+'Canvas');
+  const ctx=cv.getContext('2d');
+  const n=warpN(type);
+  const angle=S[type].angle;
+  ctx.clearRect(0,0,300,300);
+
+  // frame circle
+  ctx.beginPath();ctx.arc(CX,CY,FRAME_R,0,2*Math.PI);
+  ctx.strokeStyle='#7a5c3a';ctx.lineWidth=6;ctx.stroke();
+
+  // LAYER 1: warp spokes
+  ctx.lineWidth=WARP_W;ctx.strokeStyle=WARP_COLOR;ctx.lineCap='round';ctx.setLineDash([]);
+  for(let i=0;i<n;i++){
+    const a=spokeAngle(i,n);
+    ctx.beginPath();ctx.moveTo(CX,CY);
+    ctx.lineTo(CX+FRAME_R*Math.cos(a),CY+FRAME_R*Math.sin(a));
+    ctx.stroke();
+  }
+
+  const tc=totalCrossings(angle,n);
+  const pts=spiralPts(angle);
+  const dA=(2*Math.PI)/SPL;
+  function aToIdx(a){return Math.min(Math.round(a/dA),pts.length-1);}
+
+  // PASS A: full spiral
+  ctx.strokeStyle=WEFT_COLOR;ctx.lineWidth=WEFT_W;ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash([]);
+  ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+  for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+  ctx.stroke();
+
+  // PASS B: warp over weft at UNDER crossings
+  const hw=WEFT_W*0.9;
+  ctx.lineWidth=WARP_W+1;ctx.strokeStyle=WARP_COLOR;ctx.lineCap='round';ctx.setLineDash([]);
+  for(let c=0;c<tc;c++){
+    if(!isOver(c)){
+      const ca=crossingA(c,n);
+      const r=spiralR(ca);
+      const sa=spokeAngle(c%n,n);
+      const cos=Math.cos(sa),sin=Math.sin(sa);
+      ctx.beginPath();
+      ctx.moveTo(CX+(r-hw)*cos,CY+(r-hw)*sin);
+      ctx.lineTo(CX+(r+hw)*cos,CY+(r+hw)*sin);
+      ctx.stroke();
+    }
+  }
+
+  // PASS C: weft over warp at OVER crossings
+  ctx.strokeStyle=WEFT_COLOR;ctx.lineWidth=WEFT_W;ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash([]);
+  for(let c=0;c<tc;c++){
+    if(isOver(c)){
+      const ca=crossingA(c,n);
+      const r=spiralR(ca);
+      const span=hw/r;
+      const a0=Math.max(0,ca-span),a1=Math.min(angle,ca+span);
+      drawSegment(ctx,pts,aToIdx(a0),aToIdx(a1));
+    }
+  }
+
+  // LAYER 4: pegs
+  for(let i=0;i<n;i++){
+    const a=spokeAngle(i,n);
+    ctx.beginPath();ctx.arc(CX+FRAME_R*Math.cos(a),CY+FRAME_R*Math.sin(a),PEG_R,0,2*Math.PI);
+    ctx.fillStyle='#7a5c3a';ctx.fill();
+  }
+
+  const laps=Math.floor(angle/(2*Math.PI));
+  const c0=laps*n;
+  document.getElementById(type+'Info').textContent=
+    `Lap ${laps} — warp 0: ${isOver(c0)?'OVER':'UNDER'}`;
+}
+
+function animate(type){
+  const s=S[type];
+  if(!s.playing)return;
+  const spd=parseInt(document.getElementById('speed').value);
+  s.angle=Math.min(s.angle+(2*Math.PI/SPL)*spd*0.5,maxAngle());
+  drawAll(type);
+  if(s.angle>=maxAngle()){s.playing=false;updateBtn(type);return;}
+  s.tid=requestAnimationFrame(()=>animate(type));
+}
+
+function toggleLoom(t){S[t].playing=!S[t].playing;updateBtn(t);if(S[t].playing)animate(t);}
+function toggleAll(){['even','odd'].forEach(t=>{S[t].playing=!S[t].playing;updateBtn(t);if(S[t].playing)animate(t);});}
+function updateBtn(t){document.getElementById(t+'Btn').textContent=S[t].playing?'⏸ Pause':'▶ Play';}
+function resetLoom(t){cancelAnimationFrame(S[t].tid);S[t]={playing:false,angle:0,tid:null};updateBtn(t);drawAll(t);}
+function resetAll(){resetLoom('even');resetLoom('odd');}
+
+drawAll('even');drawAll('odd');
+</script>
 </body>
 </html>

@@ -3,49 +3,88 @@
 <head>
 <meta charset="UTF-8">
 <title>Nail String Traversal</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#fff;font-family:system-ui,sans-serif;display:flex;flex-direction:column;align-items:center;padding:12px}
-.layout{display:flex;align-items:center;gap:16px;justify-content:center;width:100%}
-.sidebar{display:flex;flex-direction:column;gap:10px;min-width:130px}
-.sidebar-right{align-items:flex-start;min-width:110px}
-button{padding:7px 14px;font-size:13px;border:1px solid #ccc;background:#fff;color:#111;border-radius:8px;cursor:pointer;width:100%}
-button:hover{background:#f3f3f3}
-.wbtn{padding:4px 8px;font-size:11px;width:100%}
-.wbtn.active{background:#111;color:#fff;border-color:#111}
-.slabel{font-size:11px;color:#888;margin-bottom:1px}
+body{font-family:'Nunito',Arial,sans-serif;background:#666;color:#111;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:0 0 24px}
+
+.header{width:100%;background:#D01012;padding:8px 20px;display:flex;align-items:center;gap:14px}
+.header h1{color:#fff;font-size:1.05em;font-weight:900;letter-spacing:3px;text-transform:uppercase;margin:0}
+.subbar{width:100%;background:#1E3A8A;padding:5px 20px;margin-bottom:18px}
+.subtitle{color:#fff;font-size:.68em;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+
+.layout{display:flex;align-items:flex-start;gap:16px;justify-content:center;width:100%;padding:0 12px}
+
+/* sidebars */
+.sidebar{display:flex;flex-direction:column;gap:0;border:3px solid #111;background:#b0b0b0;min-width:140px}
+.sidebar-right{min-width:148px}
+.sb-head{padding:5px 10px;font-size:.68em;font-weight:900;letter-spacing:2px;text-transform:uppercase;color:#fff;background:#1E3A8A}
+.sb-head.red{background:#D01012}
+.sb-body{display:flex;flex-direction:column;gap:8px;padding:10px}
+
+/* sliders */
+.slabel{font-size:.68em;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#555;margin-bottom:1px}
 .srow{display:flex;flex-direction:column;gap:2px}
-.srow label{display:flex;align-items:center;gap:6px;font-size:12px;color:#555}
-input[type=range]{width:100px}
-.wave-group{display:flex;flex-direction:column;gap:4px}
-.wave-label{font-size:11px;color:#888}
-.ck-group{display:flex;flex-direction:column;gap:3px;margin-top:6px}
-.ck-row{display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer}
-.ck-row input{cursor:pointer;accent-color:#111}
-.toggle-row{display:flex;align-items:center;gap:6px;font-size:12px;color:#555;cursor:pointer}
-.tswitch{width:32px;height:18px;background:#ccc;border-radius:9px;position:relative;transition:background .2s;flex-shrink:0}
-.tswitch.on{background:#111}
-.tknob{width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:2px;left:2px;transition:left .2s}
-.tswitch.on .tknob{left:16px}
-canvas{display:block;flex-shrink:0}
-#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10;align-items:center;justify-content:center}
+.srow label{display:flex;align-items:center;gap:6px;font-size:.75em;font-weight:700;color:#333}
+input[type=range]{width:96px;accent-color:#D01012}
+
+/* toggles */
+.toggle-row{display:flex;align-items:center;gap:5px;font-size:.7em;font-weight:700;color:#333;cursor:pointer}
+.tswitch{width:30px;height:16px;background:#999;border:2px solid #111;position:relative;flex-shrink:0;cursor:pointer}
+.tswitch.on{background:#D01012}
+.tknob{width:10px;height:10px;background:#fff;border:1px solid #555;position:absolute;top:1px;left:1px;transition:left .15s}
+.tswitch.on .tknob{left:15px}
+
+/* wave buttons */
+.wave-group{display:flex;flex-direction:column;gap:3px}
+.wave-label{font-size:.68em;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#555;margin-bottom:1px}
+.wbtn{padding:3px 8px;font-size:.72em;font-weight:900;letter-spacing:1px;text-transform:uppercase;border:2px solid #111;background:#b0b0b0;color:#111;cursor:pointer;font-family:'Nunito',Arial,sans-serif;width:100%}
+.wbtn:hover{background:#111;color:#fff}
+.wbtn.active{background:#D01012;color:#fff;border-color:#D01012}
+
+/* checkboxes */
+.ck-group{display:flex;flex-direction:column;gap:4px}
+.ck-row{display:flex;align-items:center;gap:6px;font-size:.72em;font-weight:700;color:#333;cursor:pointer;letter-spacing:.5px;text-transform:uppercase}
+.ck-row input{cursor:pointer;accent-color:#D01012;width:13px;height:13px}
+
+/* action buttons */
+.btn{padding:6px 10px;border:2px solid #111;background:#b0b0b0;cursor:pointer;font-family:'Nunito',Arial,sans-serif;font-size:.76em;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#111;width:100%}
+.btn:hover{background:#111;color:#fff}
+.btn.primary{border-color:#D01012;color:#D01012}
+.btn.primary:hover{background:#D01012;color:#fff}
+
+/* canvas */
+canvas{display:block;flex-shrink:0;border:3px solid #111;background:#D4A574}
+
+/* settings overlay */
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10;align-items:center;justify-content:center}
 #overlay.open{display:flex}
-#panel{background:#fff;border:1px solid #ddd;border-radius:12px;width:320px;max-height:90vh;overflow-y:auto;padding:20px}
-#panel h2{font-size:16px;font-weight:500;margin:0 0 12px}
-#panel h3{font-size:13px;font-weight:500;margin:12px 0 5px}
-#panel p,#panel li{font-size:12px;color:#555;line-height:1.6;margin:0 0 5px}
+#panel{background:#b0b0b0;border:3px solid #111;width:340px;max-height:90vh;overflow-y:auto;padding:0}
+#panel .ph{background:#1E3A8A;padding:8px 14px;color:#fff;font-size:.9em;font-weight:900;letter-spacing:2px;text-transform:uppercase}
+#panel .pb{padding:14px}
+#panel h3{font-size:.75em;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:#D01012;margin:10px 0 4px}
+#panel p,#panel li{font-size:.78em;font-weight:700;color:#333;line-height:1.6;margin:0 0 4px}
 #panel ul{margin:0 0 8px;padding-left:16px}
-.big-num{font-size:18px;font-weight:500;color:#111;text-align:center;margin:8px 0;font-family:monospace}
-hr{border:none;border-top:1px solid #eee;margin:12px 0}
-.close-btn{width:100%;margin-top:12px;padding:8px;font-size:13px}
+.big-num{font-size:1.2em;font-weight:900;color:#111;text-align:center;margin:8px 0;font-family:monospace;letter-spacing:1px}
+hr{border:none;border-top:2px solid #999;margin:10px 0}
+.close-btn{width:100%;margin-top:10px}
 </style>
 </head>
 <body>
+
+<div class="header">
+  <h1>&#9632; Nail String Traversal</h1>
+</div>
+<div class="subbar">
+  <div class="subtitle">String path simulation — dot travels every segment, tone pitch mapped to string length</div>
+</div>
 
 <div class="layout">
 
   <!-- LEFT: sliders -->
   <div class="sidebar">
+    <div class="sb-head">Controls</div>
+    <div class="sb-body">
     <div class="srow">
       <span class="slabel">Speed</span>
       <label><input type="range" id="spdSlider" min="1" max="10" value="5"> <span id="spdVal">5</span></label>
@@ -77,17 +116,18 @@ hr{border:none;border-top:1px solid #eee;margin:12px 0}
     <div class="srow">
       <span class="slabel">Pitch</span>
       <label class="toggle-row">
-        <span>Short=high</span>
+        <span>Short=hi</span>
         <div class="tswitch" id="pitchSwitch" onclick="togglePitch()"><div class="tknob"></div></div>
-        <span>Long=high</span>
+        <span>Long=hi</span>
       </label>
     </div>
     <div class="wave-group">
-      <span class="wave-label">Wave</span>
+      <span class="wave-label">Wave shape</span>
       <button class="wbtn active" data-wave="triangle">triangle</button>
       <button class="wbtn" data-wave="sine">sine</button>
       <button class="wbtn" data-wave="square">square</button>
       <button class="wbtn" data-wave="sawtooth">sawtooth</button>
+    </div>
     </div>
   </div>
 
@@ -98,14 +138,18 @@ hr{border:none;border-top:1px solid #eee;margin:12px 0}
 
   <!-- RIGHT: buttons -->
   <div class="sidebar sidebar-right">
-    <button onclick="generate()">&#10022; Generate</button>
-    <button id="btnPlay">&#9654; Play</button>
-    <button onclick="openSettings()">&#9881; Settings</button>
+    <div class="sb-head red">Playback</div>
+    <div class="sb-body">
+      <button class="btn primary" onclick="generate()">&#10022; Generate</button>
+      <button class="btn primary" id="btnPlay">&#9654; Play</button>
+      <button class="btn" onclick="openSettings()">&#9881; Settings</button>
+    </div>
+    <div class="sb-head">Pattern types</div>
+    <div class="sb-body">
     <div class="ck-group">
-      <span class="slabel">Pattern types</span>
       <label class="ck-row"><input type="checkbox" data-gen="step" checked> uniform step</label>
       <label class="ck-row"><input type="checkbox" data-gen="step2" checked> two steps</label>
-      <label class="ck-row"><input type="checkbox" data-gen="skip" checked> skip (stars)</label>
+      <label class="ck-row"><input type="checkbox" data-gen="skip" checked> skip / stars</label>
       <label class="ck-row"><input type="checkbox" data-gen="fan" checked> fan</label>
       <label class="ck-row"><input type="checkbox" data-gen="arc" checked> arc</label>
       <label class="ck-row"><input type="checkbox" data-gen="bands" checked> bands</label>
@@ -113,32 +157,35 @@ hr{border:none;border-top:1px solid #eee;margin:12px 0}
       <label class="ck-row"><input type="checkbox" data-gen="partialWeb" checked> partial web</label>
       <label class="ck-row"><input type="checkbox" data-gen="random" checked> random</label>
     </div>
+    </div>
   </div>
 
 </div>
 
 <div id="overlay">
   <div id="panel">
-    <h2>Settings &amp; About</h2>
+    <div class="ph">&#9881; Settings &amp; About</div>
+    <div class="pb">
     <h3>How it works</h3>
-    <p>A dot travels every string in the pattern exactly once, playing a xylophone tone at each nail. Shorter strings = higher pitch. When all strings are visited, the sequence loops.</p>
+    <p>A dot travels every string in the pattern exactly once, playing a xylophone-style tone at each nail. Shorter strings = higher pitch by default. When all strings are visited, the sequence loops.</p>
     <h3>Traversal method</h3>
-    <p>The path is pre-computed before playback using Fleury's algorithm — a greedy walk that always prefers unvisited segments and avoids bridges. This guarantees every string gets played before the loop restarts.</p>
+    <p>The path is pre-computed using Fleury's algorithm — a greedy walk that prefers unvisited segments and avoids bridges — guaranteeing every string gets played before the loop restarts.</p>
     <hr>
     <h3>Combinatorics</h3>
     <p id="comboText">With 12 nails, there are C(12,2) = 66 possible segments.</p>
     <div class="big-num" id="comboNum">2⁶⁶ ≈ 73 quintillion</div>
-    <p>Distinct patterns possible — more than any student could ever exhaust.</p>
-    <p>Using Burnside's lemma with the dihedral group for the current nail count, visually unique patterns (accounting for rotation and reflection) are roughly 1/(2N)th of that — still astronomical.</p>
+    <p>Distinct patterns possible before any repeat.</p>
+    <p>Using Burnside's lemma with the dihedral group for the current nail count, visually unique patterns are roughly 1/(2N)th of that — still astronomical.</p>
     <hr>
     <h3>On the horizon</h3>
     <ul>
-      <li>Syncopation and flanger — modulate dot speed or pitch across the traversal to create rhythmic and timbral variation</li>
-      <li>MIDI output — trigger external synths via Web MIDI API, mapping each nail hit to a note-on event</li>
-      <li>Web Audio API routing — expose the oscillator output so it can feed into browser-based synths like Tone.js</li>
+      <li>Syncopation and flanger — modulate dot speed or pitch across the traversal</li>
+      <li>MIDI output via Web MIDI API — each nail hit triggers a note-on event</li>
+      <li>Web Audio API routing — feed oscillator output into Tone.js or other browser synths</li>
       <li>Print / share pattern</li>
     </ul>
-    <button class="close-btn" onclick="closeSettings()">Close</button>
+    <button class="btn close-btn" onclick="closeSettings()">Close</button>
+    </div>
   </div>
 </div>
 
@@ -351,20 +398,21 @@ function tone(freq,vol){
 
 function drawStatic(lines,alpha){
   ctx.clearRect(0,0,W,H);
-  const dark=window.matchMedia('(prefers-color-scheme:dark)').matches;
-  ctx.fillStyle=dark?'#1a1a1a':'#f0ebe0';
+  ctx.fillStyle='#D4A574';
   ctx.beginPath();ctx.arc(cx,cy,R+10,0,Math.PI*2);ctx.fill();
-  ctx.strokeStyle=dark?`rgba(100,150,255,${alpha})`:`rgba(30,64,175,${alpha})`;
-  ctx.lineWidth=1;ctx.beginPath();
+  ctx.strokeStyle='#7a5c3a';ctx.lineWidth=6;
+  ctx.beginPath();ctx.arc(cx,cy,R+10,0,Math.PI*2);ctx.stroke();
+  ctx.strokeStyle=`rgba(30,64,175,${alpha})`;
+  ctx.lineWidth=1.2;ctx.beginPath();
   lines.forEach(([a,b])=>{const[x1,y1]=nailPos(a),[x2,y2]=nailPos(b);ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);});
   ctx.stroke();
   for(let i=0;i<N;i++){
     const[x,y]=nailPos(i);
-    ctx.fillStyle=dark?'#ccc':'#e8dfd0';
+    ctx.fillStyle='#7a5c3a';
     ctx.beginPath();ctx.arc(x,y,N>32?3:N>16?5:6,0,Math.PI*2);ctx.fill();
     if(N<=24){
-      ctx.fillStyle=dark?'#888':'#7a6055';
-      ctx.font='10px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle='#3a2010';
+      ctx.font='bold 10px Nunito,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
       const lr=R+22,a=(i/N)*Math.PI*2-Math.PI/2;
       ctx.fillText(i+1,cx+lr*Math.cos(a),cy+lr*Math.sin(a));
     }
@@ -376,10 +424,10 @@ function drawFrame(){
   if(!route.length)return;
   const step=route[routePos%route.length];
   const[x1,y1]=nailPos(step.from),[x2,y2]=nailPos(step.to);
-  ctx.strokeStyle='rgba(249,115,22,0.55)';ctx.lineWidth=3;
+  ctx.strokeStyle='rgba(208,16,18,0.5)';ctx.lineWidth=3;
   ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();
   const dx=x1+(x2-x1)*dotT,dy=y1+(y2-y1)*dotT;
-  ctx.fillStyle='#f97316';ctx.shadowColor='#f97316';ctx.shadowBlur=10;
+  ctx.fillStyle='#D01012';ctx.shadowColor='#D01012';ctx.shadowBlur=10;
   ctx.beginPath();ctx.arc(dx,dy,7,0,Math.PI*2);ctx.fill();
   ctx.shadowBlur=0;
 }

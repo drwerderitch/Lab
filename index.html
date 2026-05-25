@@ -1,1 +1,144 @@
-<h1>Lab</h1>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lab — Derek Werderitch</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #fff;
+      color: #1a1a1a;
+      padding: 2rem 1.5rem;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .eyebrow {
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      color: #888;
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    .tagline {
+      font-size: 15px;
+      color: #555;
+      margin-bottom: 2rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+
+    .card {
+      display: block;
+      text-decoration: none;
+      background: #fff;
+      border: 0.5px solid #ddd;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      transition: border-color 0.15s;
+      color: inherit;
+    }
+
+    .card:hover { border-color: #aaa; }
+
+    .card i {
+      font-size: 20px;
+      color: #888;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: #666;
+    }
+
+    .placeholder {
+      background: #f7f7f5;
+      border: 0.5px dashed #ccc;
+      border-radius: 12px;
+      padding: 1rem 1.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .placeholder p {
+      font-size: 13px;
+      color: #aaa;
+      text-align: center;
+    }
+
+    footer {
+      margin-top: 2.5rem;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    footer a {
+      color: #aaa;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      body { background: #1a1a1a; color: #e8e8e8; }
+      .card { background: #242424; border-color: #333; }
+      .card:hover { border-color: #555; }
+      .card i { color: #777; }
+      .card-desc { color: #999; }
+      .placeholder { background: #1f1f1f; border-color: #333; }
+      .placeholder p { color: #555; }
+      .eyebrow { color: #666; }
+      .tagline { color: #999; }
+      footer, footer a { color: #555; }
+    }
+  </style>
+</head>
+<body>
+
+  <p class="eyebrow">Drwerderitch</p>
+  <h1>Lab</h1>
+  <p class="tagline">Small experiments in making, teaching, and play.</p>
+
+  <div class="grid">
+
+    <a class="card" href="stringsound/">
+      <i class="ti ti-circles" aria-hidden="true"></i>
+      <p class="card-title">String & sound</p>
+      <p class="card-desc">Nail string traversal simulation</p>
+    </a>
+
+    <!-- add more cards here, copy the block above -->
+
+    <div class="placeholder">
+      <p>More coming</p>
+    </div>
+
+  </div>
+
+  <footer>
+    Made by Derek Werderitch &middot; <a href="https://drwerderitch.github.io">drwerderitch.github.io</a>
+  </footer>
+
+</body>
+</html>

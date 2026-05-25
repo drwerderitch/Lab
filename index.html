@@ -4,136 +4,190 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lab — Derek Werderitch</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #fff;
-      color: #1a1a1a;
-      padding: 2rem 1.5rem;
-      max-width: 680px;
-      margin: 0 auto;
+      font-family: 'Nunito', Arial, sans-serif;
+      background: #888888;
+      color: #111;
+      min-height: 100vh;
     }
 
-    .eyebrow {
-      font-size: 12px;
-      letter-spacing: 0.06em;
-      color: #888;
+    .header {
+      background: #D01012;
+      padding: 10px 24px;
+      display: flex;
+      align-items: center;
+    }
+
+    .header h1 {
+      color: #fff;
+      font-size: 1.05em;
+      font-weight: 900;
+      letter-spacing: 3px;
       text-transform: uppercase;
-      margin-bottom: 0.25rem;
+      margin: 0;
     }
 
-    h1 {
-      font-size: 22px;
-      font-weight: 500;
-      margin-bottom: 0.5rem;
+    .subbar {
+      background: #1E3A8A;
+      padding: 5px 24px;
+      margin-bottom: 24px;
     }
 
-    .tagline {
-      font-size: 15px;
-      color: #555;
-      margin-bottom: 2rem;
+    .subbar p {
+      color: #fff;
+      font-size: 0.68em;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
     }
 
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      padding: 0 20px 32px;
+      max-width: 860px;
+      margin: 0 auto;
     }
 
     .card {
-      display: block;
+      display: flex;
+      flex-direction: column;
       text-decoration: none;
-      background: #fff;
-      border: 0.5px solid #ddd;
-      border-radius: 12px;
-      padding: 1rem 1.25rem;
-      transition: border-color 0.15s;
-      color: inherit;
+      color: #111;
+      background: #888888;
+      border: 3px solid #111;
     }
 
-    .card:hover { border-color: #aaa; }
+    .card-header {
+      background: #1E3A8A;
+      padding: 6px 12px;
+    }
 
-    .card i {
-      font-size: 20px;
-      color: #888;
-      display: block;
-      margin-bottom: 10px;
+    .card-header span {
+      color: #fff;
+      font-size: 0.72em;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+
+    .card-body {
+      flex: 1;
+      padding: 12px 14px;
+      background: #D4A574;
+      border-top: 3px solid #111;
+      border-bottom: 3px solid #111;
+    }
+
+    .card-body i {
+      font-size: 22px;
+      color: #111;
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 8px;
     }
 
     .card-title {
-      font-size: 15px;
-      font-weight: 500;
+      font-size: 0.95em;
+      font-weight: 900;
+      letter-spacing: 1px;
+      text-transform: uppercase;
       margin-bottom: 4px;
     }
 
     .card-desc {
-      font-size: 13px;
-      color: #666;
+      font-size: 0.72em;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: #444;
     }
 
+    .card-footer {
+      margin-top: auto;
+      padding: 5px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .card-footer span {
+      font-size: 0.68em;
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: #555;
+    }
+
+    .card:hover .card-header { background: #D01012; }
+    .card:hover .card-footer span { color: #111; }
+
     .placeholder {
-      background: #f7f7f5;
-      border: 0.5px dashed #ccc;
-      border-radius: 12px;
-      padding: 1rem 1.25rem;
+      border: 3px dashed #888;
+      padding: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
     }
 
     .placeholder p {
-      font-size: 13px;
-      color: #aaa;
-      text-align: center;
+      font-size: 0.72em;
+      font-weight: 900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #777;
     }
 
     footer {
-      margin-top: 2.5rem;
-      font-size: 12px;
-      color: #aaa;
+      padding: 0 20px 20px;
+      font-size: 0.65em;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #666;
+      text-align: center;
     }
 
-    footer a {
-      color: #aaa;
-    }
-
-    @media (prefers-color-scheme: dark) {
-      body { background: #1a1a1a; color: #e8e8e8; }
-      .card { background: #242424; border-color: #333; }
-      .card:hover { border-color: #555; }
-      .card i { color: #777; }
-      .card-desc { color: #999; }
-      .placeholder { background: #1f1f1f; border-color: #333; }
-      .placeholder p { color: #555; }
-      .eyebrow { color: #666; }
-      .tagline { color: #999; }
-      footer, footer a { color: #555; }
-    }
+    footer a { color: #666; }
   </style>
 </head>
 <body>
 
-  <p class="eyebrow">Drwerderitch</p>
-  <h1>Lab</h1>
-  <p class="tagline">Small experiments in making, teaching, and play.</p>
+  <div class="header">
+    <h1>Lab</h1>
+  </div>
+  <div class="subbar">
+    <p>Small experiments in making, teaching, and play</p>
+  </div>
 
   <div class="grid">
 
     <a class="card" href="stringsound/">
-      <i class="ti ti-circles" aria-hidden="true"></i>
-      <p class="card-title">String & sound</p>
-      <p class="card-desc">Nail string traversal simulation</p>
+      <div class="card-header"><span>Simulation</span></div>
+      <div class="card-body">
+        <i class="ti ti-circles" aria-hidden="true"></i>
+        <p class="card-title">String &amp; sound</p>
+        <p class="card-desc">Nail string traversal simulation</p>
+      </div>
+      <div class="card-footer"><span>Open →</span></div>
     </a>
 
-   <a class="card" href="roundloom/">
-  <i class="ti ti-rotate-clockwise" aria-hidden="true"></i>
-  <p class="card-title">Round loom weaving</p>
-  <p class="card-desc">Visualize even vs. odd spoke counts in circular weaving</p>
-</a>
-    <!-- add more cards here, copy the block above -->
+    <a class="card" href="roundloom/">
+      <div class="card-header"><span>Teaching tool</span></div>
+      <div class="card-body">
+        <i class="ti ti-rotate-clockwise" aria-hidden="true"></i>
+        <p class="card-title">Round loom weaving</p>
+        <p class="card-desc">Visualize even vs. odd spoke counts in circular weaving</p>
+      </div>
+      <div class="card-footer"><span>Open →</span></div>
+    </a>
+
+    <!-- add more cards here, copy a card block above -->
 
     <div class="placeholder">
       <p>More coming</p>

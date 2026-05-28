@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Knot Flyer</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;overflow:hidden;font-family:'Press Start 2P',monospace;font-size:10px}
+canvas{display:block;cursor:crosshair}
+#canvaswrap{filter:blur(1.4px)}
+#crt{position:fixed;inset:0;z-index:5;pointer-events:none;
+  background:repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,0,0,0.15) 2px,
+    rgba(0,0,0,0.15) 4px
+  )}
+#hud-bottom{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);
+  color:#fff;font-size:10px;pointer-events:none;z-index:10;
+  background:rgba(0,0,0,.5);padding:6px 18px;border-radius:20px;
+  letter-spacing:2px;white-space:nowrap}
+#pausescreen{position:fixed;inset:0;display:none;flex-direction:column;
+  align-items:center;justify-content:center;z-index:20;
+  background:rgba(0,0,0,.75)}
+#pause-title{color:#fff;font-size:28px;letter-spacing:8px;margin-bottom:32px}
+#pause-info{color:#fff;font-size:9px;text-align:center;line-height:2.8;opacity:0.85}
+#cxflash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  color:#fff;font-size:48px;font-weight:bold;pointer-events:none;
+  opacity:0;transition:opacity 0.1s;text-shadow:0 0 20px currentColor;z-index:10}
+#knotbanner{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);
+  color:#0f0;font-size:16px;font-weight:bold;pointer-events:none;
+  opacity:0;transition:opacity 0.3s;text-align:center;
+  text-shadow:0 0 8px #0f0;z-index:10}
+#crosscount{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+  color:#fff;font-size:22px;letter-spacing:3px;pointer-events:none;
+  background:rgba(0,0,0,.6);padding:6px 20px;border-radius:20px;z-index:10}
+#gameover{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);
+  color:#f00;font-size:18px;pointer-events:none;z-index:20;
+  text-align:center;text-shadow:0 0 8px #f00;opacity:0;transition:opacity 0.2s;line-height:2.5}
+</style>
+</head>
+<body>
+<div id="crt"></div>
+<div id="gameover">GAME OVER</div>
+<!-- Always visible HUD -->
+<div id="hud-bottom">
+  <span id="hud-cx">CROSSINGS: 0</span>
+  &nbsp;&nbsp;|&nbsp;&nbsp;
+  <span id="hud-score">RINGS: 0</span>
+  &nbsp;&nbsp;&nbsp;&nbsp;
+  <span style="opacity:0.5">SPACE = PAUSE</span>
+</div>
+
+<!-- Pause overlay -->
+<div id="pausescreen">
+  <div id="pause-title">PAUSED</div>
+  <div id="pause-info">
+    HOLD MOUSE → STEER<br>
+    W → THRUST<br>
+    C → RESET &nbsp; SCROLL → ZOOM<br><br>
+    ALT: <span id="alt">0.0</span><br>
+    CROSSINGS: <span id="cx">0</span><br>
+    RINGS: <span id="rt">0</span><br>
+    <span id="ktype"></span><br><br>
+    ZOOM<br>
+    <input type="range" id="zoomslider" min="3" max="30" value="7" step="0.5"
+      style="width:160px;margin-top:6px;accent-color:#fff"><br><br>
+    ── KNOT KEY ──<br><br>
+    <div style="display:flex;gap:18px;justify-content:center;flex-wrap:wrap;font-size:8px;line-height:1.8">
+      <div>🎉 OVERHAND<br><span style="opacity:0.6">det=3</span></div>
+      <div>✨ FIGURE-EIGHT<br><span style="opacity:0.6">det=5</span></div>
+      <div>🔷 DOUBLE OVERHAND<br><span style="opacity:0.6">det=7</span></div>
+      <div>💠 BARREL KNOT<br><span style="opacity:0.6">det=11</span></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="cxflash"></div>
+<div id="knotbanner"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const wrap=document.createElement('div');
+wrap.id='canvaswrap';
+wrap.style.cssText='position:fixed;inset:0;';
+wrap.appendChild(renderer.domElement);
+document.body.appendChild(wrap);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb); // sky blue - instant spatial reference
+scene.fog = new THREE.Fog(0x87ceeb, 40, 150);
+
+const cam = new THREE.PerspectiveCamera(70, innerWidth/innerHeight, 0.05, 200);
+
+scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(20,40,10); scene.add(sun);
+
+// ── Ground plane ──────────────────────────────────────────────────
+const groundGeo = new THREE.PlaneGeometry(200,200,1,1);
+const groundMat = new THREE.MeshLambertMaterial({color:0x3a7d44});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI/2;
+ground.position.y = -8;
+scene.add(ground);
+
+const grid = new THREE.GridHelper(200,40,0x2a5a33,0x2a5a33);
+grid.position.y = -7.95;
+scene.add(grid);
+
+// ── Towers ────────────────────────────────────────────────────────
+const towerCols=[0xddaa55,0x8899aa,0xcc8844,0x99aacc,0xddbb66,0xaabbcc];
+const towerData=[];
+function addTower(x,z,h,col){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(1.5,h,1.5),new THREE.MeshLambertMaterial({color:col}));
+  m.position.set(x,-8+h/2,z); scene.add(m);
+  const cap=new THREE.Mesh(new THREE.ConeGeometry(1.2,2,4),new THREE.MeshLambertMaterial({color:0xcc3333}));
+  cap.position.set(x,-8+h+1,z); scene.add(cap);
+  towerData.push({x,z,h});
+}
+for(let i=0;i<6;i++){
+  const a=(i/6)*Math.PI*2;
+  addTower(Math.cos(a)*25,Math.sin(a)*25,10+Math.random()*8,towerCols[i]);
+}
+for(let i=0;i<8;i++){
+  const a=(i/8)*Math.PI*2+0.3;
+  addTower(Math.cos(a)*50,Math.sin(a)*50,6+Math.random()*6,towerCols[i%6]);
+}
+
+function terrainHeight(){ return -8; } // flat ground
+
+function terrainHeight(){ return -8; }
+
+
+
+
+// Small origin dot on ground
+const dot=new THREE.Mesh(
+  new THREE.CircleGeometry(0.5,12),
+  new THREE.MeshBasicMaterial({color:0xff4400})
+);
+dot.rotation.x=-Math.PI/2;
+dot.position.y=-7.94;
+scene.add(dot);
+
+// ── Clouds — give altitude reference ─────────────────────────────
+function cloud(x,y,z){
+  const g=new THREE.SphereGeometry(1,6,4);
+  const m=new THREE.MeshLambertMaterial({color:0xffffff,transparent:true,opacity:0.85});
+  for(let i=0;i<4;i++){
+    const c=new THREE.Mesh(g,m);
+    c.position.set(x+i*1.5-2,y+Math.random()*0.5,z);
+    c.scale.set(2+Math.random(),1+Math.random()*0.5,1.5);
+    scene.add(c);
+  }
+}
+for(let i=0;i<12;i++) cloud((Math.random()-.5)*80, 4+Math.random()*3, (Math.random()-.5)*80);
+
+// ── Trail ─────────────────────────────────────────────────────────
+const trail=[], MAX_PTS=400;
+let trailMesh=null;
+const trailMat=new THREE.MeshStandardMaterial({
+  vertexColors:true, roughness:0.35, metalness:0.15, side:THREE.FrontSide
+});
+let lastPt=null;
+const MIN_ALT=-6, MAX_ALT=6;
+
+function hCol(y){
+  const t=(y-MIN_ALT)/(MAX_ALT-MIN_ALT);
+  return new THREE.Color().setHSL(0.33, 0.9, 0.1+t*0.6);
+}
+
+function rebuildTrail(){
+  if(trailMesh){scene.remove(trailMesh);trailMesh.geometry.dispose();}
+  const n=trail.length; if(n<2)return;
+  const R=0.22, S=10, pos=[],col=[],nrm=[],idx=[];
+  const up=new THREE.Vector3(0,1,0);
+  for(let i=0;i<n;i++){
+    const p=trail[i];
+    let fwd=i<n-1?trail[i+1].clone().sub(p).normalize():trail[i].clone().sub(trail[i-1]).normalize();
+    const r=new THREE.Vector3().crossVectors(fwd,up).normalize();
+    const u2=new THREE.Vector3().crossVectors(r,fwd).normalize();
+    const c=hCol(p.y), br=0.35+0.65*(i/(n-1));
+    for(let s=0;s<S;s++){
+      const a=(s/S)*Math.PI*2;
+      const nx=Math.cos(a)*r.x+Math.sin(a)*u2.x;
+      const ny=Math.cos(a)*r.y+Math.sin(a)*u2.y;
+      const nz=Math.cos(a)*r.z+Math.sin(a)*u2.z;
+      pos.push(p.x+nx*R, p.y+ny*R, p.z+nz*R);
+      nrm.push(nx,ny,nz);
+      col.push(c.r*br,c.g*br,c.b*br);
+    }
+  }
+  for(let i=0;i<n-1;i++){
+    const a=i*S,b=(i+1)*S;
+    for(let s=0;s<S;s++){const s1=(s+1)%S;idx.push(a+s,b+s,b+s1,a+s,b+s1,a+s1);}
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  geo.setAttribute('normal',new THREE.Float32BufferAttribute(nrm,3));
+  geo.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  geo.setIndex(idx);
+  trailMesh=new THREE.Mesh(geo,trailMat);
+  scene.add(trailMesh);
+}
+
+// ── Crossings ────────────────────────────────────────────────────
+function segXZ(p1,p2,p3,p4){
+  const ax=p2.x-p1.x,az=p2.z-p1.z,bx=p4.x-p3.x,bz=p4.z-p3.z;
+  const d=ax*bz-az*bx; if(Math.abs(d)<1e-8)return null;
+  const t=((p3.x-p1.x)*bz-(p3.z-p1.z)*bx)/d;
+  const u=((p3.x-p1.x)*az-(p3.z-p1.z)*ax)/d;
+  return(t>.05&&t<.95&&u>.05&&u<.95)?{t,u}:null;
+}
+let crossings=[];
+function detectCrossings(){
+  crossings=[];
+  const n=trail.length;
+  for(let i=0;i<n-1;i++)
+    for(let j=i+12;j<n-1;j++){
+      const h=segXZ(trail[i],trail[i+1],trail[j],trail[j+1]);
+      if(h){
+        const y1=trail[i].y*(1-h.t)+trail[i+1].y*h.t;
+        const y2=trail[j].y*(1-h.u)+trail[j+1].y*h.u;
+        if(Math.abs(y1-y2)>.15)crossings.push({i,j,sign:y1>y2?1:-1}); // lowered threshold
+      }
+    }
+}
+
+let prevCxCount=0;
+let flashTimer=null, bannerTimer=null;
+
+function flashCrossing(){
+  const el=document.getElementById('cxflash');
+  el.textContent='✕';
+  el.style.color='#ff8800';
+  el.style.opacity='1';
+  if(flashTimer)clearTimeout(flashTimer);
+  flashTimer=setTimeout(()=>el.style.opacity='0',400);
+}
+
+function showKnotBanner(label){
+  const el=document.getElementById('knotbanner');
+  el.innerHTML=label+'<br><span style="font-size:24px;color:#afa">knot detected!</span>';
+  el.style.opacity='1';
+  if(bannerTimer)clearTimeout(bannerTimer);
+  bannerTimer=setTimeout(()=>el.style.opacity='0',3000);
+}
+
+// ── Alexander Polynomial knot classifier ─────────────────────────
+// Builds Gauss code from crossing array, constructs Alexander matrix,
+// evaluates determinant at t=-1 to get knot determinant as fingerprint.
+
+function gaussCode(cx){
+  // For each crossing, record where it appears in trail order
+  // Each crossing appears twice: once on segment i, once on segment j
+  const events=[];
+  cx.forEach((c,k)=>{
+    events.push({pos:c.i, id:k, role:'over', sign:c.sign});   // i strand is over when sign=1
+    events.push({pos:c.j, id:k, role:'under', sign:c.sign});
+  });
+  // Sort by position along trail
+  events.sort((a,b)=>a.pos-b.pos);
+  return events;
+}
+
+function alexanderDet(cx){
+  const n=cx.length;
+  if(n<2)return 1; // unknot
+
+  // Build arcs: arcs are trail segments between consecutive undercrossings
+  // Number arcs 0..n-1 (for n crossings there are n arcs in a closed curve)
+  // We approximate open trail as closed.
+  // Walk trail, assign arc index, increment at each undercrossing
+  const events=gaussCode(cx);
+  const arcAtCrossing=[]; // arcAtCrossing[k] = {over:arcIdx, in:arcIdx, out:arcIdx}
+  let arc=0;
+  const crossingArcs=Array.from({length:n},()=>({}));
+
+  for(const e of events){
+    if(e.role==='under'||e.role==='over'){
+      if(e.role==='over') crossingArcs[e.id].over=arc;
+      if(e.role==='under'){
+        crossingArcs[e.id].in=arc;
+        arc=(arc+1)%n; // new arc starts after undercrossing
+        crossingArcs[e.id].out=arc;
+      }
+    }
+  }
+
+  // Build Alexander matrix at t=-1
+  // For each crossing i with arcs (in=a, over=b, out=c) and sign s:
+  //   if s=+1 (right-handed): row = [-t, 1, t-1] at cols [a,b,c]
+  //     at t=-1: [1, 1, -2]
+  //   if s=-1 (left-handed): row = [t-1, 1, -t] at cols [a,b,c]  
+  //     at t=-1: [-2, 1, 1]
+  const M=Array.from({length:n},()=>new Array(n).fill(0));
+  for(let k=0;k<n;k++){
+    const {over:b, in:a, out:c}=crossingArcs[k];
+    if(a===undefined||b===undefined||c===undefined) return null;
+    if(cx[k].sign===1){ M[k][a]+=1; M[k][b]+=1; M[k][c]+=-2; }
+    else               { M[k][a]+=-2; M[k][b]+=1; M[k][c]+=1; }
+  }
+
+  // Delete last row and last column, compute determinant of (n-1)x(n-1) minor
+  if(n===1) return Math.abs(M[0][0]);
+  const minor=M.slice(0,n-1).map(r=>r.slice(0,n-1));
+  return Math.abs(Math.round(det(minor)));
+}
+
+function det(M){
+  const n=M.length;
+  if(n===1) return M[0][0];
+  if(n===2) return M[0][0]*M[1][1]-M[0][1]*M[1][0];
+  let d=0;
+  for(let c=0;c<n;c++){
+    const sub=M.slice(1).map(r=>[...r.slice(0,c),...r.slice(c+1)]);
+    d+=M[0][c]*(c%2===0?1:-1)*det(sub);
+  }
+  return d;
+}
+
+function knotLabel(cx){
+  if(!cx.length) return '';
+  if(cx.length<2) return '1 crossing';
+  const d=alexanderDet(cx);
+  if(d===null) return cx.length+' crossings';
+  // Knot determinant fingerprints
+  if(d===1)  return cx.length>0?'⚠️ Not a knot':'';
+  if(d===3)  return '🎉 Overhand knot!';
+  if(d===5)  return '✨ Figure-eight!';
+  if(d===7)  return '🔷 Double overhand!';
+  if(d===9)  return ''; // triple overhand — recognized but not celebrated
+  if(d===11) return '💠 Barrel knot!';
+  return `🔵 Knot (det=${d})`;
+}
+
+// ── Rings ─────────────────────────────────────────────────────────
+const RING_R = 4;
+const RING_TUBE = 0.4;
+const NUM_RINGS = 3;
+const rings = [];        // {mesh, center, normal, threaded, popping, popT}
+
+function spawnRing(forcePos){
+  // Random position in flying zone, not too close to origin
+  const a = Math.random()*Math.PI*2;
+  const d = 12 + Math.random()*18;
+  const cx = Math.cos(a)*d;
+  const cz = Math.sin(a)*d;
+  const cy = (Math.random()-.5)*4; // slight vertical variation
+
+  // Normal: start vertical (0,0,1) then tilt up to ±45deg randomly
+  const tiltAngle = (Math.random()-.5)*(Math.PI/2); // ±45deg
+  const tiltAxis = new THREE.Vector3(Math.random()-.5, 0, Math.random()-.5).normalize();
+  const normal = new THREE.Vector3(0,0,1)
+    .applyQuaternion(new THREE.Quaternion().setFromAxisAngle(tiltAxis, tiltAngle))
+    .normalize();
+
+  const geo = new THREE.TorusGeometry(RING_R, RING_TUBE, 16, 64);
+  const mat = new THREE.MeshStandardMaterial({
+    color:0xffee44, metalness:0.8, roughness:0.2,
+    emissive:0xaa6600, emissiveIntensity:0.6
+  });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(cx, cy, cz);
+  // Orient torus so its face aligns with normal
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1), normal);
+  scene.add(mesh);
+
+  rings.push({mesh, center:new THREE.Vector3(cx,cy,cz), normal, threaded:false, popping:false, popT:0});
+}
+
+for(let i=0;i<NUM_RINGS;i++) spawnRing();
+
+// Particles for pop effect
+const particles=[];
+function popRing(ring){
+  ring.popping=true; ring.popT=0;
+  // Spawn burst particles
+  for(let i=0;i<20;i++){
+    const geo=new THREE.SphereGeometry(0.12,4,4);
+    const mat=new THREE.MeshBasicMaterial({color:0xffdd00});
+    const m=new THREE.Mesh(geo,mat);
+    m.position.copy(ring.center);
+    const vel=new THREE.Vector3(
+      (Math.random()-.5)*8,
+      (Math.random()-.5)*8,
+      (Math.random()-.5)*8
+    );
+    scene.add(m);
+    particles.push({mesh:m, vel, life:1.0});
+  }
+}
+
+function updateParticles(dt){
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];
+    p.life-=dt*1.5;
+    p.mesh.position.addScaledVector(p.vel,dt);
+    p.vel.y-=10*dt; // gravity
+    p.mesh.material.opacity=p.life;
+    p.mesh.material.transparent=true;
+    if(p.life<=0){scene.remove(p.mesh);p.mesh.geometry.dispose();particles.splice(i,1);}
+  }
+}
+
+// Threading detection: did trail segment cross ring plane within ring radius?
+let prevTrailLen=0;
+function checkRingThreading(){
+  if(trail.length<2)return;
+  // Only check new trail segments since last check
+  const start=Math.max(1,prevTrailLen-1);
+  prevTrailLen=trail.length;
+  for(const ring of rings){
+    if(ring.threaded||ring.popping)continue;
+    for(let i=start;i<trail.length;i++){
+      const a=trail[i-1], b=trail[i];
+      // Check if segment a->b crosses ring's plane
+      const da=ring.normal.dot(a.clone().sub(ring.center));
+      const db=ring.normal.dot(b.clone().sub(ring.center));
+      if(Math.sign(da)===Math.sign(db))continue; // same side, no crossing
+      // Interpolate crossing point on plane
+      const t=da/(da-db);
+      const pt=a.clone().lerp(b,t);
+      // Check within ring radius
+      if(pt.distanceTo(ring.center)<RING_R*0.9){
+        ring.threaded=true; score++;
+        ring.mesh.material.color.setHex(0x00ffff);
+        ring.mesh.material.emissive.setHex(0x003333);
+        ring.mesh.material.emissiveIntensity=0.5;
+        ring.mesh.material.metalness=0.5;
+        ring.mesh.material.roughness=0.3;
+        showRingFlash();
+        document.getElementById('hud-score').textContent='RINGS: '+score;
+        document.getElementById('rt').textContent=score;
+      }
+    }
+  }
+}
+
+let ringFlashTimer=null;
+function showRingFlash(){
+  const el=document.getElementById('cxflash');
+  el.textContent='⭕';
+  el.style.color='#ffcc00';
+  el.style.fontSize='72px';
+  el.style.opacity='1';
+  if(ringFlashTimer)clearTimeout(ringFlashTimer);
+  ringFlashTimer=setTimeout(()=>{el.style.opacity='0';el.style.fontSize='48px';},800);
+}
+
+function respawnRing(ring){
+  // Remove old mesh
+  scene.remove(ring.mesh); ring.mesh.geometry.dispose(); ring.mesh.material.dispose();
+  rings.splice(rings.indexOf(ring),1);
+  spawnRing();
+}
+
+// Ring pop animation (expand + fade)
+function updateRings(dt){
+  for(const ring of rings){
+    if(ring.popping){
+      ring.popT+=dt*2;
+      const s=1+ring.popT*3;
+      ring.mesh.scale.setScalar(s);
+      ring.mesh.material.transparent=true;
+      ring.mesh.material.opacity=Math.max(0,1-ring.popT);
+    } else {
+      // Gentle pulse
+      const pulse=1+Math.sin(Date.now()*0.002)*0.04;
+      ring.mesh.scale.setScalar(pulse);
+    }
+  }
+}
+
+// Ring thread count for UI
+function threadedCount(){ return rings.filter(r=>r.threaded).length + (NUM_RINGS - rings.length); }
+const keys={};
+let mouseDown=false, mouseX=innerWidth/2, mouseY=innerHeight/2;
+
+function explodeTrail(){
+  // Sample every Nth trail point to spawn particles
+  const step = Math.max(1, Math.floor(trail.length/40));
+  for(let i=0;i<trail.length;i+=step){
+    const p=trail[i];
+    const geo=new THREE.SphereGeometry(0.12,4,4);
+    const mat=new THREE.MeshBasicMaterial({color:0x44ff44});
+    const m=new THREE.Mesh(geo,mat);
+    m.position.copy(p);
+    const vel=new THREE.Vector3(
+      (Math.random()-.5)*6,
+      Math.random()*5,
+      (Math.random()-.5)*6
+    );
+    scene.add(m);
+    particles.push({mesh:m, vel, life:1.0});
+  }
+}
+
+let dead=false, deathTimer=null;
+function die(){
+  if(dead)return;
+  dead=true;
+  explodeTrail();
+  if(trailMesh){scene.remove(trailMesh);trailMesh.geometry.dispose();trailMesh=null;}
+  const el=document.getElementById('gameover');
+  el.style.opacity='1';
+  if(deathTimer)clearTimeout(deathTimer);
+  deathTimer=setTimeout(()=>{
+    el.style.opacity='0';
+    dead=false;
+    reset();
+  },2000);
+}
+
+function checkCollisions(){
+  const th=terrainHeight();
+  if(planePos.y<=th+0.5){ die(); return; }
+  for(const t of towerData){
+    const dx=planePos.x-t.x, dz=planePos.z-t.z;
+    if(dx*dx+dz*dz<2.5*2.5 && planePos.y<-8+t.h+2){ die(); return; }
+  }
+}
+let paused=false, score=0;
+let yaw=0, pitch=0;
+let camDist=7; // distance behind player — zoom control
+const startPos = new THREE.Vector3(0,0,12);
+let planePos = startPos.clone();
+const camPos = new THREE.Vector3(0, 3, 18);
+
+// Scroll wheel zoom — works live during play and pause
+window.addEventListener('wheel', e=>{
+  camDist = Math.max(3, Math.min(30, camDist - e.deltaY*0.02));
+  document.getElementById('zoomslider').value = camDist;
+}, {passive:true});
+
+// Slider zoom — during pause
+document.getElementById('zoomslider').addEventListener('input', e=>{
+  camDist = parseFloat(e.target.value);
+});
+
+function reset(){
+  trail.length=0; rebuildTrail();
+  planePos.copy(startPos);
+  yaw=0; pitch=0; lastPt=null;
+  crossings=[]; prevCxCount=0; prevTrailLen=0; score=0;
+  // Reset any threaded rings back to gold
+  rings.forEach(r=>{
+    if(r.threaded&&!r.popping){
+      r.threaded=false;
+      r.mesh.material.color.setHex(0xffd700);
+      r.mesh.material.emissive.setHex(0x553300);
+      r.mesh.material.emissiveIntensity=0.3;
+      r.mesh.material.metalness=0.9;
+      r.mesh.material.roughness=0.15;
+    }
+  });
+  camPos.set(0,3,18);
+  document.getElementById('cx').textContent='0';
+  document.getElementById('rt').textContent='0';
+  document.getElementById('ktype').textContent='';
+  document.getElementById('hud-cx').textContent='CROSSINGS: 0';
+  document.getElementById('hud-score').textContent='RINGS: 0';
+  document.getElementById('knotbanner').style.opacity='0';
+}
+
+document.addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.code==='Space'){
+    e.preventDefault(); paused=!paused;
+    document.getElementById('pausescreen').style.display=paused?'flex':'none';
+  }
+  if(e.code==='KeyC') reset();
+});
+document.addEventListener('keyup',e=>{keys[e.code]=false;});
+
+renderer.domElement.addEventListener('mousedown',e=>{
+  mouseDown=true; mouseX=e.clientX; mouseY=e.clientY;
+});
+renderer.domElement.addEventListener('mousemove',e=>{
+  mouseX=e.clientX; mouseY=e.clientY;
+});
+window.addEventListener('mouseup',()=>{mouseDown=false;});
+
+// ── Loop ──────────────────────────────────────────────────────────
+const clock=new THREE.Clock();
+let frame=0;
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),.05);
+  if(paused){renderer.render(scene,cam);return;}
+  if(dead){updateParticles(dt);renderer.render(scene,cam);return;}
+
+  // Offset from screen center drives turn RATE — no screen edge limit
+  if(mouseDown){
+    const ox = (mouseX - innerWidth/2)  / (innerWidth/2);  // -1..1
+    const oy = (mouseY - innerHeight/2) / (innerHeight/2);
+    yaw   -= ox * 1.8 * dt;
+    pitch -= oy * 1.2 * dt;
+    pitch = Math.max(-0.7, Math.min(0.7, pitch));
+  }
+
+  // Build camera quaternion from yaw+pitch only (no roll)
+  const qY=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), yaw);
+  const qP=new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), pitch);
+  const q=qY.multiply(qP);
+
+  // Forward from orientation
+  const fwd=new THREE.Vector3(0,0,-1).applyQuaternion(q);
+  const spd=(keys['KeyW']||keys['ArrowUp'])?10:2.5;
+  planePos.addScaledVector(fwd,spd*dt);
+
+  planePos.y=Math.max(MIN_ALT,Math.min(MAX_ALT,planePos.y));
+  checkCollisions();
+  if(dead)return;
+
+  // Trail
+  if(!lastPt) lastPt=planePos.clone();
+  if(planePos.distanceTo(lastPt)>.25){
+    trail.push(planePos.clone());
+    if(trail.length>MAX_PTS)trail.shift();
+    lastPt.copy(planePos);
+    rebuildTrail();
+  }
+
+  // Over-shoulder camera: target is behind and above the plane
+  const back = new THREE.Vector3(0,0,1).applyQuaternion(q);
+  const camTarget = planePos.clone()
+    .addScaledVector(back, camDist)
+    .add(new THREE.Vector3(0, camDist*0.4, 0));
+  // Lerp camera toward target — lag factor
+  camPos.lerp(camTarget, 0.08);
+  cam.position.copy(camPos);
+  // Camera always looks at a point slightly ahead of the plane
+  const lookAt = planePos.clone().addScaledVector(new THREE.Vector3(0,0,-1).applyQuaternion(q), 4);
+  cam.lookAt(lookAt);
+
+  checkRingThreading();
+  updateRings(dt);
+  updateParticles(dt);
+
+  frame++;
+  if(frame%45===0&&trail.length>20){
+    detectCrossings();
+    const n=crossings.length;
+    document.getElementById('hud-cx').textContent='CROSSINGS: '+n;
+    document.getElementById('cx').textContent=n;
+    // Flash on new crossing
+    if(n>prevCxCount) flashCrossing();
+    prevCxCount=n;
+    // Knot classification
+    const label=knotLabel(crossings);
+    document.getElementById('ktype').textContent=label;
+    if(n>=3 && label && !label.includes('Unknot') && !label.includes('crossings')){
+      showKnotBanner(label);
+      rings.filter(r=>r.threaded&&!r.popping).forEach(r=>{
+        popRing(r);
+        setTimeout(()=>respawnRing(r),1500);
+      });
+    }
+  }
+
+  document.getElementById('alt').textContent=planePos.y.toFixed(1);
+
+  renderer.render(scene,cam);
+}
+
+window.addEventListener('resize',()=>{
+  cam.aspect=innerWidth/innerHeight;
+  cam.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+animate();
+</script>
+</body>
+</html>

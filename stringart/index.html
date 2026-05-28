@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>String Art Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;900&family=Alfa+Slab+One&family=Titan+One&family=Montserrat:wght@900&family=Boogaloo&family=Fugaz+One&family=Righteous&family=Noto+Emoji:wght@700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Nunito',system-ui,sans-serif;background:#666;color:#111;padding:0}
+#header{background:#D01012;color:#fff;font-size:1.1em;font-weight:900;letter-spacing:2px;text-transform:uppercase;padding:10px 18px;border-bottom:3px solid #111}
+#app{display:flex;flex-direction:column;gap:10px;max-width:1000px;margin:0 auto;padding:12px}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;background:#b0b0b0;border:3px solid #111}
+.bar label{font-size:11px;font-weight:900;color:#111;text-transform:uppercase;letter-spacing:1px}
+.bar span{font-size:13px;font-weight:900;min-width:28px}
+.sep{width:2px;height:22px;background:#111;margin:0 2px}
+button{font-size:11px;font-weight:900;padding:5px 12px;cursor:pointer;border:2px solid #111;background:#fff;color:#111;text-transform:uppercase;letter-spacing:1px;font-family:'Nunito',sans-serif}
+button:hover{background:#111;color:#fff}
+button:disabled{opacity:0.4;cursor:default}
+button.primary{background:#1E3A8A;color:#fff;border-color:#111}
+button.primary:hover{background:#111;color:#fff}
+button.active{background:#111;color:#fff}
+select,input[type=range]{font-family:'Nunito',sans-serif;font-weight:700}
+#canvases{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.panel{display:flex;flex-direction:column;align-items:center;gap:6px}
+.panel p{font-size:11px;font-weight:900;color:#fff;text-transform:uppercase;letter-spacing:1px}
+canvas{border:3px solid #111}
+#drawCanvas{cursor:crosshair;background:#fff;touch-action:none}
+#outCanvas{background:#D4A574}
+#stepList{font-size:13px;max-height:400px;overflow-y:auto;background:#b0b0b0;border:3px solid #111;padding:10px;line-height:1;font-family:'Nunito',monospace;outline:none}
+#stepList .row{padding:6px 8px;cursor:pointer;display:block}
+#stepList .row.active{background:#1E3A8A;color:#fff}
+#stepList .row.active span{color:#aad4ff !important}
+#stepList .row.active b{color:#fff !important}
+</style>
+</head>
+<body>
+<div id="header">String Art Planner</div>
+<div id="app">
+
+  <div class="bar">
+    <label>Letter</label>
+    <input id="letterInput" maxlength="1" placeholder="A" autocomplete="off" style="width:48px;height:36px;font-size:28px;font-weight:700;text-align:center;border:1px solid #aaa;border-radius:6px;padding:0">
+    <select id="fontPick" style="font-size:13px;padding:4px 6px;border:1px solid #aaa;border-radius:6px">
+      <option value="Montserrat">Montserrat Black — geometric</option>
+      <option value="Alfa Slab One">Alfa Slab One — slab serif</option>
+      <option value="Titan One">Titan One — rounded slab</option>
+      <option value="Fugaz One">Fugaz One — bold display</option>
+      <option value="Boogaloo">Boogaloo — chunky fun</option>
+      <option value="Righteous">Righteous — square geometric</option>
+      <option value="Noto Emoji">Noto Emoji — symbols &amp; emoji</option>
+    </select>
+    <span id="symbolPicker" style="display:none;gap:4px;flex-wrap:wrap;max-width:220px">
+      <span style="font-size:18px;cursor:pointer" title="click to use" class="sym">⭐</span>
+      <span style="font-size:18px;cursor:pointer" class="sym">❤️</span>
+      <span style="font-size:18px;cursor:pointer" class="sym">🏠</span>
+      <span style="font-size:18px;cursor:pointer" class="sym">★</span>
+      <span style="font-size:18px;cursor:pointer" class="sym">♦</span>
+      <span style="font-size:18px;cursor:pointer" class="sym">✦</span>
+      <span style="font-size:18px;cursor:pointer" class="sym">⬟</span>
+      <span style="font-size:18px;cursor:pointer" class="sym">🌙</span>
+      <span style="font-size:18px;cursor:pointer" class="sym">⚡</span>
+      <span style="font-size:18px;cursor:pointer" class="sym">🍎</span>
+      <span style="font-size:18px;cursor:pointer" class="sym">🐱</span>
+      <span style="font-size:18px;cursor:pointer" class="sym">🦋</span>
+    </span>
+    <label style="margin-left:4px">Fill</label>
+    <input type="checkbox" id="letterFill" checked style="width:16px;height:16px;cursor:pointer" title="Filled vs outline">
+    <button class="primary" id="stampBtn">Stamp to canvas</button>
+    <span style="font-size:11px;color:#888">clears existing drawing</span>
+  </div>
+
+  <div class="bar">
+    <label>Tool</label>
+    <button id="toolPen" class="active">✏️ Draw</button>
+    <button id="toolErase">🧹 Erase</button>
+    <button id="toolFill">🪣 Fill</button>
+    <div class="sep"></div>
+    <label>Size</label>
+    <input type="range" id="brushSize" min="2" max="40" value="10" style="width:90px">
+    <span id="brushVal">10</span>
+    <div class="sep"></div>
+    <button id="clearBtn">Clear</button>
+  </div>
+
+  <div class="bar">
+    <label>Strings</label>
+    <input type="range" id="strCount" min="50" max="600" step="10" value="200" style="width:130px">
+    <span id="strVal">200</span>
+    <label>String color</label>
+    <input type="color" id="strColor" value="#1e3a8a" style="width:36px;height:26px;border:1px solid #aaa;cursor:pointer;border-radius:4px;padding:1px">
+    <div class="sep"></div>
+    <label>Mode</label>
+    <select id="genMode" style="font-size:12px;padding:4px 6px;border:1px solid #aaa;border-radius:6px">
+      <option value="greedy">Greedy (default)</option>
+      <option value="short">Prefer short lines</option>
+      <option value="norepeat">No angle repeat</option>
+      <option value="diverse">Force angle diversity</option>
+      <option value="hybrid">Hybrid (short+diverse)</option>
+    </select>
+    <label>Grey fill</label>
+    <input type="range" id="greyFill" min="0" max="80" step="1" value="20" style="width:90px">
+    <span id="greyVal">20</span>
+    <div class="sep"></div>
+    <input type="checkbox" id="doubleNails" style="width:16px;height:16px;cursor:pointer" title="Add a nail in each gap (33/side, 128 total)">
+    <button class="primary" id="runBtn">Generate</button>
+    <button id="exportBtn" disabled>Save image</button>
+    <button id="printBtn" disabled>Print list</button>
+    <button id="copyBtn" disabled>Copy list</button>
+    <button id="txtBtn" disabled>Download .txt</button>
+  </div>
+
+  <div id="canvases">
+    <div class="panel"><canvas id="drawCanvas" width="420" height="420"></canvas><p>Draw here</p></div>
+    <div class="panel"><canvas id="outCanvas"></canvas><p>String art plan</p></div>
+  </div>
+  <div id="stepList">Draw something and click Generate.</div>
+</div>
+<script>
+const PEGS_PER_SIDE=17;
+function getTotalPegs(){ return (document.getElementById('doubleNails').checked?33:17)*4-4; }
+const DSZ=420, OSZ=420, OFF=40;
+
+const drawCanvas=document.getElementById('drawCanvas');
+const dc=drawCanvas.getContext('2d');
+const outCanvas=document.getElementById('outCanvas');
+outCanvas.width=OSZ+OFF*2; outCanvas.height=OSZ+OFF*2;
+
+const strSlider=document.getElementById('strCount');
+const strVal=document.getElementById('strVal');
+const brushSlider=document.getElementById('brushSize');
+const brushVal=document.getElementById('brushVal');
+const runBtn=document.getElementById('runBtn');
+const exportBtn=document.getElementById('exportBtn');
+const stepList=document.getElementById('stepList');
+
+// init white canvas
+dc.fillStyle='#fff'; dc.fillRect(0,0,DSZ,DSZ);
+
+let tool='pen', painting=false, activeRow=0;
+
+function setRow(n){
+  const rows=stepList.querySelectorAll('.row');
+  if(!rows.length)return;
+  activeRow=Math.max(0,Math.min(n,rows.length-1));
+  rows.forEach((r,i)=>r.classList.toggle('active',i===activeRow));
+  rows[activeRow].scrollIntoView({block:'nearest'});
+}
+
+stepList.addEventListener('keydown',e=>{
+  if(e.key===' '||e.key==='Enter'||e.key==='ArrowDown'){e.preventDefault();setRow(activeRow+1);}
+  if(e.key==='ArrowUp'){e.preventDefault();setRow(activeRow-1);}
+});
+
+brushSlider.addEventListener('input',()=>brushVal.textContent=brushSlider.value);
+strSlider.addEventListener('input',()=>strVal.textContent=strSlider.value);
+document.getElementById('greyFill').addEventListener('input',e=>document.getElementById('greyVal').textContent=e.target.value);
+document.getElementById('toolPen').addEventListener('click',()=>setTool('pen'));
+document.getElementById('toolErase').addEventListener('click',()=>setTool('erase'));
+document.getElementById('toolFill').addEventListener('click',()=>setTool('fill'));
+document.getElementById('clearBtn').addEventListener('click',clearDraw);
+
+const fontPick=document.getElementById('fontPick');
+const symbolPicker=document.getElementById('symbolPicker');
+fontPick.addEventListener('change',()=>{
+  const isEmoji=fontPick.value==='Noto Emoji';
+  symbolPicker.style.display=isEmoji?'flex':'none';
+});
+document.querySelectorAll('.sym').forEach(s=>{
+  s.addEventListener('click',()=>{
+    document.getElementById('letterInput').value=s.textContent.trim();
+  });
+});
+
+function setTool(t){
+  tool=t;
+  document.getElementById('toolPen').classList.toggle('active',t==='pen');
+  document.getElementById('toolErase').classList.toggle('active',t==='erase');
+  document.getElementById('toolFill').classList.toggle('active',t==='fill');
+  drawCanvas.style.cursor=t==='fill'?'cell':'crosshair';
+}
+
+function clearDraw(){
+  dc.fillStyle='#fff'; dc.fillRect(0,0,DSZ,DSZ);
+}
+
+function getPos(e){
+  const r=drawCanvas.getBoundingClientRect();
+  const t=e.touches?e.touches[0]:e;
+  return [t.clientX-r.left, t.clientY-r.top];
+}
+
+function floodFill(x,y){
+  x=Math.round(x); y=Math.round(y);
+  if(x<0||x>=DSZ||y<0||y>=DSZ) return;
+  const id=dc.getImageData(0,0,DSZ,DSZ), d=id.data;
+  const si=(y*DSZ+x)*4;
+  const tr=d[si],tg=d[si+1],tb=d[si+2],ta=d[si+3];
+  const fr=parseInt(drawColor.slice(1,3),16);
+  const fg=parseInt(drawColor.slice(3,5),16);
+  const fb=parseInt(drawColor.slice(5,7),16);
+  if(tr===fr&&tg===fg&&tb===fb) return;
+  const stack=[si/4]; const vis=new Uint8Array(DSZ*DSZ);
+  while(stack.length){
+    const i=stack.pop();
+    if(vis[i]) continue; vis[i]=1;
+    const pi=i*4;
+    if(d[pi]!==tr||d[pi+1]!==tg||d[pi+2]!==tb||d[pi+3]!==ta) continue;
+    d[pi]=fr; d[pi+1]=fg; d[pi+2]=fb; d[pi+3]=255;
+    const cx=i%DSZ, cy=Math.floor(i/DSZ);
+    if(cx>0) stack.push(i-1);
+    if(cx<DSZ-1) stack.push(i+1);
+    if(cy>0) stack.push(i-DSZ);
+    if(cy<DSZ-1) stack.push(i+DSZ);
+  }
+  dc.putImageData(id,0,0);
+}
+
+function paintAt(x,y,isFirst){
+  const sz=parseInt(brushSlider.value);
+  if(tool==='fill'){ floodFill(x,y); return; }
+  if(tool==='erase'){
+    dc.save();
+    dc.globalCompositeOperation='destination-out';
+    dc.fillStyle='rgba(0,0,0,1)';
+    dc.beginPath(); dc.arc(x,y,sz/2,0,Math.PI*2); dc.fill();
+    // fill white back
+    dc.globalCompositeOperation='source-over';
+    dc.fillStyle='#fff';
+    dc.beginPath(); dc.arc(x,y,sz/2,0,Math.PI*2); dc.fill();
+    dc.restore();
+    return;
+  }
+  dc.strokeStyle='#000000';
+  dc.lineWidth=sz;
+  dc.lineCap='round'; dc.lineJoin='round';
+  if(isFirst){ dc.beginPath(); dc.moveTo(x,y); }
+  dc.lineTo(x,y); dc.stroke();
+  dc.beginPath(); dc.moveTo(x,y);
+}
+
+drawCanvas.addEventListener('mousedown',e=>{
+  const [x,y]=getPos(e); painting=true;
+  paintAt(x,y,true);
+});
+drawCanvas.addEventListener('mousemove',e=>{
+  if(!painting) return;
+  const [x,y]=getPos(e); paintAt(x,y,false);
+});
+drawCanvas.addEventListener('mouseup',()=>painting=false);
+drawCanvas.addEventListener('mouseleave',()=>painting=false);
+drawCanvas.addEventListener('touchstart',e=>{
+  e.preventDefault(); const [x,y]=getPos(e); painting=true; paintAt(x,y,true);
+},{passive:false});
+drawCanvas.addEventListener('touchmove',e=>{
+  e.preventDefault(); if(!painting) return; const [x,y]=getPos(e); paintAt(x,y,false);
+},{passive:false});
+drawCanvas.addEventListener('touchend',()=>painting=false);
+
+// peg geometry — 64 pegs, corners shared
+function getPegPos(idx,sz,off,totalPegs){
+  totalPegs=totalPegs||getTotalPegs();
+  const N=totalPegs/4; // segments per side
+  const side=Math.floor(idx/N), s=idx%N, t=s/N;
+  if(side===0) return [off+t*sz, off];
+  if(side===1) return [off+sz, off+t*sz];
+  if(side===2) return [off+sz*(1-t), off+sz];
+  return [off, off+sz*(1-t)];
+}
+
+function drawPegs(ctx,sz,off,totalPegs){
+  totalPegs=totalPegs||getTotalPegs();
+  const labelEvery=totalPegs<=64?4:8;
+  for(let i=0;i<totalPegs;i++){
+    const [x,y]=getPegPos(i,sz,off,totalPegs);
+    ctx.fillStyle='#cc0000';
+    ctx.beginPath(); ctx.arc(x,y,totalPegs>64?2:3,0,Math.PI*2); ctx.fill();
+    if(i%labelEvery===0){
+      ctx.fillStyle='rgba(0,0,0,0.8)';
+      ctx.font='bold 9px system-ui';
+      ctx.textAlign='center';
+      const cx=off+sz/2, cy=off+sz/2;
+      const nx=x+(x<cx-2?-11:x>cx+2?11:0);
+      const ny=y+(y<cy-2?-6:y>cy+2?14:7);
+      ctx.fillText(i,nx,ny);
+    }
+  }
+}
+
+function getLine(a,b,sz,cache,totalPegs){
+  const key=a<b?a*totalPegs+b:b*totalPegs+a;
+  if(cache.has(key)) return cache.get(key);
+  let [x0,y0]=getPegPos(a,sz,0,totalPegs),[x1,y1]=getPegPos(b,sz,0,totalPegs);
+  x0=Math.round(x0);y0=Math.round(y0);x1=Math.round(x1);y1=Math.round(y1);
+  const pts=[];
+  let dx=Math.abs(x1-x0),dy=Math.abs(y1-y0);
+  let sx=x0<x1?1:-1,sy=y0<y1?1:-1,xi=x0,yi=y0,err=dx-dy;
+  while(true){
+    if(xi>=0&&xi<sz&&yi>=0&&yi<sz) pts.push(yi*sz+xi);
+    if(xi===x1&&yi===y1) break;
+    const e2=2*err;
+    if(e2>-dy){err-=dy;xi+=sx;}
+    if(e2<dx){err+=dx;yi+=sy;}
+  }
+  cache.set(key,pts); return pts;
+}
+
+function stampLetter(){
+  const ch=document.getElementById('letterInput').value.trim();
+  if(!ch) return;
+  const font=document.getElementById('fontPick').value;
+  const filled=document.getElementById('letterFill').checked;
+
+  const W=1200, H=1200; // large offscreen, letter will fit comfortably
+  const tmp=document.createElement('canvas');
+  tmp.width=W; tmp.height=H;
+  const tc=tmp.getContext('2d');
+  tc.fillStyle='#fff'; tc.fillRect(0,0,W,H);
+
+  const isEmoji=font==='Noto Emoji';
+  const fStack=(sz)=>isEmoji?`700 ${sz}px "Noto Emoji",serif`:`900 ${sz}px "${font}",sans-serif`;
+
+  // find font size that fits within 80% of offscreen
+  const maxW=W*0.8, maxH=H*0.8;
+  let lo=10, hi=800, fs=200;
+  tc.textBaseline='alphabetic';
+  for(let i=0;i<20;i++){
+    const mid=(lo+hi)/2;
+    tc.font=fStack(mid);
+    const m=tc.measureText(ch);
+    const w=m.actualBoundingBoxLeft+m.actualBoundingBoxRight;
+    const h=(m.actualBoundingBoxAscent||mid*0.8)+(m.actualBoundingBoxDescent||mid*0.15);
+    if(w<maxW && h<maxH) lo=mid; else hi=mid;
+    fs=lo;
+  }
+
+  tc.font=fStack(fs);
+  const m=tc.measureText(ch);
+  const asc=m.actualBoundingBoxAscent||fs*0.8;
+  const desc=m.actualBoundingBoxDescent||fs*0.15;
+  const gW=m.actualBoundingBoxLeft+m.actualBoundingBoxRight;
+  const gH=asc+desc;
+
+  // draw centered in offscreen
+  const drawX=W/2;
+  const drawY=H/2 - gH/2 + asc;
+
+  if(filled){
+    tc.fillStyle='#000';
+    tc.textAlign='center';
+    tc.fillText(ch, drawX, drawY);
+  } else {
+    tc.strokeStyle='#000';
+    tc.lineWidth=Math.max(14, fs*0.06);
+    tc.textAlign='center';
+    tc.strokeText(ch, drawX, drawY);
+  }
+
+  // pixel-scan to find exact ink bounds
+  const px=tc.getImageData(0,0,W,H).data;
+  let x0=W,x1=0,y0=H,y1=0;
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      const i=(y*W+x)*4;
+      // any non-white pixel (r<240)
+      if(px[i]<240){
+        if(x<x0)x0=x; if(x>x1)x1=x;
+        if(y<y0)y0=y; if(y>y1)y1=y;
+      }
+    }
+  }
+
+  if(x1<=x0||y1<=y0){dc.fillStyle='#fff';dc.fillRect(0,0,DSZ,DSZ);return;}
+
+  // stretch ink bounds to fill draw canvas exactly
+  dc.fillStyle='#fff'; dc.fillRect(0,0,DSZ,DSZ);
+  dc.drawImage(tmp, x0,y0, x1-x0+1, y1-y0+1, 0,0, DSZ,DSZ);
+}
+
+runBtn.addEventListener('click',()=>{
+  runBtn.disabled=true; runBtn.textContent='Working…';
+  setTimeout(generate,20);
+});
+
+function lineAngle(a,b,N){
+  const [x0,y0]=getPegPos(a,OSZ,0,N),[x1,y1]=getPegPos(b,OSZ,0,N);
+  return Math.atan2(y1-y0,x1-x0);
+}
+function lineLen(a,b,N){
+  const [x0,y0]=getPegPos(a,OSZ,0,N),[x1,y1]=getPegPos(b,OSZ,0,N);
+  return Math.hypot(x1-x0,y1-y0);
+}
+function angleDiff(a,b){
+  let d=Math.abs(a-b)%Math.PI;
+  return d>Math.PI/2?Math.PI-d:d;
+}
+
+function generate(){
+  const N=getTotalPegs(), W=OSZ+OFF*2, H=OSZ+OFF*2;
+  const mode=document.getElementById('genMode').value;
+  const tmp=document.createElement('canvas');
+  tmp.width=OSZ; tmp.height=OSZ;
+  const tc=tmp.getContext('2d');
+  tc.drawImage(drawCanvas,0,0,OSZ,OSZ);
+  const id=tc.getImageData(0,0,OSZ,OSZ);
+  const buf=new Float32Array(OSZ*OSZ);
+  const grey=parseInt(document.getElementById('greyFill').value)/100;
+  for(let i=0;i<OSZ*OSZ;i++){
+    const g=id.data[i*4]*0.299+id.data[i*4+1]*0.587+id.data[i*4+2]*0.114;
+    const v=(255-g)/255; // 0=white, 1=black
+    buf[i]=grey+(1-grey)*v; // white areas get grey floor, black stays near 1
+  }
+
+  const maxStr=parseInt(strSlider.value);
+  const maxLen=Math.hypot(OSZ,OSZ);
+  const cache=new Map(), sequence=[];
+  let lastAngle=null;
+  const angleBins=new Int32Array(8);
+
+  // start at peg nearest the image's center of mass
+  let mx=0, my=0, total=0;
+  for(let y=0;y<OSZ;y++) for(let x=0;x<OSZ;x++){
+    const v=buf[y*OSZ+x]; mx+=x*v; my+=y*v; total+=v;
+  }
+  if(total>0){mx/=total;my/=total;} else {mx=OSZ/2;my=OSZ/2;}
+  let cur=0, bestDist=Infinity;
+  for(let i=0;i<N;i++){
+    const [px,py]=getPegPos(i,OSZ,0,N);
+    const d=Math.hypot(px-mx,py-my);
+    if(d<bestDist){bestDist=d;cur=i;}
+  }
+
+  for(let s=0;s<maxStr;s++){
+    let best=-Infinity, bestPeg=-1;
+    for(let j=0;j<N;j++){
+      if(j===cur) continue;
+      const pts=getLine(cur,j,OSZ,cache,N);
+      if(!pts.length) continue;
+      let score=0; for(const p of pts) score+=buf[p];
+      score/=pts.length;
+
+      if(mode==='short'){
+        // penalise long lines — normalise len to 0-1 and subtract fraction
+        const len=lineLen(cur,j,N)/maxLen;
+        score*=(1-len*0.6);
+      } else if(mode==='norepeat' && lastAngle!==null){
+        // zero out score if angle too similar to last string
+        const diff=angleDiff(lineAngle(cur,j,N),lastAngle);
+        if(diff<0.2) score=-1;
+      } else if(mode==='diverse'){
+        // bonus for underused angle bins
+        const ang=(lineAngle(cur,j,N)+Math.PI)%(Math.PI); // 0..PI
+        const bin=Math.floor(ang/(Math.PI/8))%8;
+        const usage=angleBins[bin];
+        const minUsage=Math.min(...angleBins);
+        score*=(1+Math.max(0,minUsage-usage)*0.4);
+      } else if(mode==='hybrid'){
+        const len=lineLen(cur,j,N)/maxLen;
+        const ang=(lineAngle(cur,j,N)+Math.PI)%(Math.PI);
+        const bin=Math.floor(ang/(Math.PI/8))%8;
+        const usage=angleBins[bin];
+        const minUsage=Math.min(...angleBins);
+        score*=(1-len*0.4)*(1+Math.max(0,minUsage-usage)*0.4);
+      }
+
+      if(score>best){best=score;bestPeg=j;}
+    }
+    if(bestPeg<0) break;
+    sequence.push([cur,bestPeg]);
+    const pts=getLine(cur,bestPeg,OSZ,cache,N);
+    for(const p of pts) buf[p]=Math.max(0,buf[p]-0.2);
+    lastAngle=lineAngle(cur,bestPeg,N);
+    const ang=(lastAngle+Math.PI)%(Math.PI);
+    angleBins[Math.floor(ang/(Math.PI/8))%8]++;
+    cur=bestPeg;
+  }
+
+  const octx=outCanvas.getContext('2d');
+  octx.fillStyle='#D4A574'; octx.fillRect(0,0,W,H);
+  octx.strokeStyle='#111'; octx.lineWidth=2;
+  octx.strokeRect(OFF,OFF,OSZ,OSZ);
+
+  const hex=document.getElementById('strColor').value;
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  octx.strokeStyle=`rgba(${r},${g},${b},0.25)`;
+  octx.lineWidth=0.8;
+  octx.beginPath();
+  for(const [a,b2] of sequence){
+    const [x1,y1]=getPegPos(a,OSZ,OFF,N),[x2,y2]=getPegPos(b2,OSZ,OFF,N);
+    octx.moveTo(x1,y1); octx.lineTo(x2,y2);
+  }
+  octx.stroke();
+  drawPegs(octx,OSZ,OFF,N);
+
+  let html='<b style="display:block;margin-bottom:8px">String sequence — click a row or use Space / Enter / ↑↓ to advance</b>';
+  sequence.forEach(([a,b2],i)=>{
+    html+=`<span class="row" data-i="${i}">`
+        +`<span style="color:#888;font-size:11px">${i+1}.</span> `
+        +`<span style="color:#aaa">${a}</span>`
+        +` → `
+        +`<b style="font-size:15px;color:#111">${b2}</b></span>`;
+  });
+  stepList.innerHTML=html;
+  stepList.setAttribute('tabindex','0');
+
+  let activeRow=0;
+  function setRow(n){
+    const rows=stepList.querySelectorAll('.row');
+    if(!rows.length)return;
+    activeRow=Math.max(0,Math.min(n,rows.length-1));
+    rows.forEach((r,i)=>r.classList.toggle('active',i===activeRow));
+    rows[activeRow].scrollIntoView({block:'nearest'});
+  }
+  stepList.innerHTML=html;
+  stepList.setAttribute('tabindex','0');
+  activeRow=0;
+  setRow(0);
+  stepList.querySelectorAll('.row').forEach((r,i)=>{
+    r.addEventListener('click',()=>setRow(i));
+  });
+
+  exportBtn.disabled=false;
+  printBtn.disabled=false;
+  copyBtn.disabled=false;
+  txtBtn.disabled=false;
+  runBtn.disabled=false; runBtn.textContent='Generate';
+}
+
+exportBtn.addEventListener('click',()=>{
+  outCanvas.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.download='string-art-plan.png';
+    a.href=url;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),1000);
+  });
+});
+
+const printBtn=document.getElementById('printBtn');
+const copyBtn=document.getElementById('copyBtn');
+const txtBtn=document.getElementById('txtBtn');
+
+function getSequenceText(){
+  const rows=document.querySelectorAll('#stepList .row');
+  let txt='String Art Sequence\n\n';
+  rows.forEach((r,i)=>{
+    const from=r.querySelectorAll('span')[1].textContent.trim();
+    const to=r.querySelector('b').textContent.trim();
+    txt+=`${String(i+1).padStart(3)}.  ${String(from).padStart(3)} -> ${to}\n`;
+  });
+  return txt;
+}
+
+copyBtn.addEventListener('click',()=>{
+  navigator.clipboard.writeText(getSequenceText()).then(()=>{
+    copyBtn.textContent='Copied!';
+    setTimeout(()=>copyBtn.textContent='Copy list',2000);
+  }).catch(()=>{
+    // fallback: select a textarea
+    const ta=document.createElement('textarea');
+    ta.value=getSequenceText();
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    copyBtn.textContent='Copied!';
+    setTimeout(()=>copyBtn.textContent='Copy list',2000);
+  });
+});
+
+txtBtn.addEventListener('click',()=>{
+  const a=document.createElement('a');
+  a.download='string-art-sequence.txt';
+  a.href='data:text/plain;charset=utf-8,'+encodeURIComponent(getSequenceText());
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+});
+document.getElementById('stampBtn').addEventListener('click', stampLetter);
+printBtn.addEventListener('click',()=>{
+  const rows=document.querySelectorAll('#stepList .row');
+  let txt='';
+  rows.forEach(r=>{
+    const num=r.querySelector('span').textContent.replace('.','').trim();
+    const spans=r.querySelectorAll('span');
+    const from=spans[1].textContent.trim();
+    const to=r.querySelector('b').textContent.trim();
+    txt+=`${num.padStart(3,'  ')}.  ${from.padStart(3)} → ${to}\n`;
+  });
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>String Art Sequence</title>
+<style>
+  body{font-family:monospace;font-size:16px;padding:24px;column-count:3;column-gap:40px}
+  h2{font-size:14px;margin-bottom:16px;column-span:all}
+  .step{padding:3px 0;border-bottom:1px solid #eee;break-inside:avoid}
+  .step .num{color:#aaa;font-size:12px;min-width:32px;display:inline-block}
+  .step .from{color:#aaa;min-width:28px;display:inline-block;text-align:right}
+  .step .to{font-weight:bold;font-size:18px;min-width:28px;display:inline-block;text-align:right}
+  @media print{body{padding:12px}}
+</style></head><body>
+<h2>String Art Sequence &mdash; ${rows.length} strings</h2>`);
+  rows.forEach((r,i)=>{
+    const spans=r.querySelectorAll('span');
+    const from=spans[1].textContent.trim();
+    const to=r.querySelector('b').textContent.trim();
+    w.document.write(`<div class="step"><span class="num">${i+1}.</span> <span class="from">${from}</span> &rarr; <span class="to">${to}</span></div>`);
+  });
+  w.document.write('</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(()=>w.print(),300);
+});
+</script>
+</body>
+</html>

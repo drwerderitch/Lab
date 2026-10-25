@@ -46,6 +46,7 @@ input[type=range]{width:96px;accent-color:#D01012}
 .ck-group{display:flex;flex-direction:column;gap:4px}
 .ck-row{display:flex;align-items:center;gap:6px;font-size:.72em;font-weight:700;color:#333;cursor:pointer;letter-spacing:.5px;text-transform:uppercase}
 .ck-row input{cursor:pointer;accent-color:#D01012;width:13px;height:13px}
+.perc-select{width:100%;padding:3px 4px;border:2px solid #111;background:#b0b0b0;font-family:'Nunito',Arial,sans-serif;font-size:.72em;font-weight:700;color:#111;letter-spacing:.5px;cursor:pointer}
 
 /* action buttons */
 .btn{padding:6px 10px;border:2px solid #111;background:#b0b0b0;cursor:pointer;font-family:'Nunito',Arial,sans-serif;font-size:.76em;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#111;width:100%}
@@ -143,6 +144,33 @@ hr{border:none;border-top:2px solid #999;margin:10px 0}
       <button class="btn primary" onclick="generate()">&#10022; Generate</button>
       <button class="btn primary" id="btnPlay">&#9654; Play</button>
       <button class="btn" onclick="openSettings()">&#9881; Settings</button>
+    </div>
+    <div class="sb-head">Percussion</div>
+    <div class="sb-body">
+      <div class="srow">
+        <span class="slabel">Endpoints</span>
+        <select id="endpointPerc" class="perc-select">
+          <option value="off">— off —</option>
+          <option value="kick">kick</option>
+          <option value="snare">snare</option>
+          <option value="hihat_c">hi-hat (closed)</option>
+          <option value="hihat_o">hi-hat (open)</option>
+          <option value="glitch">glitch</option>
+          <option value="click">click</option>
+        </select>
+      </div>
+      <div class="srow">
+        <span class="slabel">Crossings</span>
+        <select id="crossingPerc" class="perc-select">
+          <option value="off">— off —</option>
+          <option value="kick">kick</option>
+          <option value="snare">snare</option>
+          <option value="hihat_c">hi-hat (closed)</option>
+          <option value="hihat_o">hi-hat (open)</option>
+          <option value="glitch">glitch</option>
+          <option value="click">click</option>
+        </select>
+      </div>
     </div>
     <div class="sb-head">Pattern types</div>
     <div class="sb-body">
@@ -433,26 +461,143 @@ function drawFrame(){
 }
 
 let distanceTiming=false;
-// reference length for normalization: average segment length at N=12
-const REF_LEN=2*190*Math.sin(Math.PI*4/12); // step-4 chord, ~middle length
+const REF_LEN=2*190*Math.sin(Math.PI*4/12);
 
 function toggleTiming(){
   distanceTiming=!distanceTiming;
-  const sw=document.getElementById('timingSwitch');
-  sw.classList.toggle('on',distanceTiming);
+  document.getElementById('timingSwitch').classList.toggle('on',distanceTiming);
+}
+
+// --- Percussion synthesis ---
+function ensureAudio(){
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==='suspended')audioCtx.resume();
+  return audioCtx;
+}
+
+function percKick(){
+  const ac=ensureAudio(),t=ac.currentTime;
+  const g=ac.createGain(),o=ac.createOscillator();
+  o.frequency.setValueAtTime(120,t);
+  o.frequency.exponentialRampToValueAtTime(30,t+0.08);
+  g.gain.setValueAtTime(0.9,t);
+  g.gain.exponentialRampToValueAtTime(0.001,t+0.25);
+  o.connect(g);g.connect(ac.destination);
+  o.start(t);o.stop(t+0.28);
+}
+
+function percSnare(){
+  const ac=ensureAudio(),t=ac.currentTime;
+  // noise layer
+  const buf=ac.createBuffer(1,ac.sampleRate*0.2,ac.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const noise=ac.createBufferSource();noise.buffer=buf;
+  const bf=ac.createBiquadFilter();bf.type='bandpass';bf.frequency.value=3000;bf.Q.value=0.5;
+  const ng=ac.createGain();ng.gain.setValueAtTime(0.5,t);ng.gain.exponentialRampToValueAtTime(0.001,t+0.15);
+  noise.connect(bf);bf.connect(ng);ng.connect(ac.destination);noise.start(t);
+  // tonal body
+  const o=ac.createOscillator(),og=ac.createGain();
+  o.frequency.value=200;og.gain.setValueAtTime(0.4,t);og.gain.exponentialRampToValueAtTime(0.001,t+0.08);
+  o.connect(og);og.connect(ac.destination);o.start(t);o.stop(t+0.1);
+}
+
+function percHihatC(){
+  const ac=ensureAudio(),t=ac.currentTime;
+  const buf=ac.createBuffer(1,ac.sampleRate*0.05,ac.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const noise=ac.createBufferSource();noise.buffer=buf;
+  const bf=ac.createBiquadFilter();bf.type='highpass';bf.frequency.value=8000;
+  const g=ac.createGain();g.gain.setValueAtTime(0.4,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.04);
+  noise.connect(bf);bf.connect(g);g.connect(ac.destination);noise.start(t);
+}
+
+function percHihatO(){
+  const ac=ensureAudio(),t=ac.currentTime;
+  const buf=ac.createBuffer(1,ac.sampleRate*0.3,ac.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const noise=ac.createBufferSource();noise.buffer=buf;
+  const bf=ac.createBiquadFilter();bf.type='highpass';bf.frequency.value=7000;
+  const g=ac.createGain();g.gain.setValueAtTime(0.35,t);g.gain.exponentialRampToValueAtTime(0.001,t+0.28);
+  noise.connect(bf);bf.connect(g);g.connect(ac.destination);noise.start(t);
+}
+
+function percGlitch(){
+  const ac=ensureAudio(),t=ac.currentTime;
+  const dur=0.03+Math.random()*0.06;
+  const buf=ac.createBuffer(1,ac.sampleRate*dur,ac.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  const noise=ac.createBufferSource();noise.buffer=buf;
+  const bf=ac.createBiquadFilter();bf.type='bandpass';
+  bf.frequency.value=200+Math.random()*4000;bf.Q.value=2+Math.random()*8;
+  const g=ac.createGain();g.gain.setValueAtTime(0.5,t);g.gain.exponentialRampToValueAtTime(0.001,t+dur);
+  noise.connect(bf);bf.connect(g);g.connect(ac.destination);noise.start(t);
+}
+
+function percClick(){
+  const ac=ensureAudio(),t=ac.currentTime;
+  const buf=ac.createBuffer(1,ac.sampleRate*0.012,ac.sampleRate);
+  const d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);
+  const noise=ac.createBufferSource();noise.buffer=buf;
+  const g=ac.createGain();g.gain.setValueAtTime(0.6,t);
+  noise.connect(g);g.connect(ac.destination);noise.start(t);
+}
+
+const PERC_FNS={kick:percKick,snare:percSnare,hihat_c:percHihatC,hihat_o:percHihatO,glitch:percGlitch,click:percClick};
+function firePerc(selectId){const v=document.getElementById(selectId).value;if(v!=='off'&&PERC_FNS[v])PERC_FNS[v]();}
+
+// --- Crossing pre-computation ---
+// Returns t values along segment i where it intersects segment j
+function segIntersectT(i,j){
+  const[a1,b1]=segs[i],[a2,b2]=segs[j];
+  if(a1===a2||a1===b2||b1===a2||b1===b2)return null; // share endpoint, not a crossing
+  const[x1,y1]=nailPos(a1),[x2,y2]=nailPos(b1);
+  const[x3,y3]=nailPos(a2),[x4,y4]=nailPos(b2);
+  const dx1=x2-x1,dy1=y2-y1,dx2=x4-x3,dy2=y4-y3;
+  const denom=dx1*dy2-dy1*dx2;
+  if(Math.abs(denom)<1e-10)return null;
+  const t=((x3-x1)*dy2-(y3-y1)*dx2)/denom;
+  const u=((x3-x1)*dy1-(y3-y1)*dx1)/denom;
+  if(t>0.01&&t<0.99&&u>0.01&&u<0.99)return t;
+  return null;
+}
+
+// For each route step, pre-compute sorted crossing t values
+let routeCrossings=[]; // array of sorted float arrays
+
+function buildCrossings(){
+  routeCrossings=route.map(step=>{
+    const ts=[];
+    segs.forEach((_,j)=>{
+      if(j===step.seg)return;
+      const t=segIntersectT(step.seg,j);
+      if(t!==null)ts.push(t);
+    });
+    ts.sort((a,b)=>a-b);
+    return ts;
+  });
 }
 
 function advance(){
   const spd=parseInt(document.getElementById('spdSlider').value)*0.008;
-  const step=route[routePos%route.length];
+  const rp=routePos%route.length;
+  const step=route[rp];
   const len=segLen(segs[step.seg]);
-  // in distance mode: longer segments take longer (step scaled by len/REF)
-  // shorter strings zip by faster, longer strings take more time
-  const step2=distanceTiming?spd*(REF_LEN/len):spd;
-  dotT+=step2;
+  const delta=distanceTiming?spd*(REF_LEN/len):spd;
+  const prevT=dotT;
+  dotT+=delta;
+
+  // fire any crossings whose t falls strictly between prevT and min(dotT,1)
+  const crossings=routeCrossings[rp]||[];
+  const scanTo=Math.min(dotT,1);
+  for(let i=0;i<crossings.length;i++){
+    const ct=crossings[i];
+    if(ct>prevT&&ct<=scanTo) firePerc('crossingPerc');
+  }
+
   if(dotT>=1){
     dotT=0;
     tone(pitchForLen(len),parseInt(document.getElementById('volSlider').value));
+    firePerc('endpointPerc');
     routePos=(routePos+1)%route.length;
   }
 }
@@ -466,6 +611,7 @@ function loadPattern(lines){
   currentAlpha=.85;
   route=buildRoute(lines);
   routePos=0;dotT=0;
+  buildCrossings();
   drawStatic(lines,currentAlpha);
 }
 

@@ -1,0 +1,1426 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Disc Golf Draft 1</title>
+<style>
+  html,body{margin:0;overflow:hidden;background:#b6c2ca;font-family:Arial,sans-serif}
+  #hud{position:absolute;top:12px;left:12px;background:#fff;border:1px solid #ccc;border-radius:6px;
+       padding:12px 14px;font-size:13px;color:#222;width:220px;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  #hud h3{margin:0 0 8px;font-size:14px}
+  #hud label{display:block;margin-top:8px;font-size:12px;color:#555}
+  #hud select{width:100%}
+  #hud button{margin-top:10px;width:100%;padding:6px;border:1px solid #999;background:#f5f5f5;
+       border-radius:4px;cursor:pointer;font-size:12px}
+  #hud button:hover{background:#e8e8e8}
+  #hint{position:absolute;bottom:10px;left:12px;color:#555;font-size:12px;background:#fff;
+       padding:6px 10px;border-radius:6px;border:1px solid #ccc}
+  #perf{position:absolute;top:12px;right:12px;background:#fff;border:1px solid #ccc;border-radius:6px;
+       padding:10px 12px;font-size:12px;color:#222;font-family:monospace;box-shadow:0 2px 6px rgba(0,0,0,.15)}
+  #perf div{margin-top:2px}
+</style>
+</head>
+<body>
+<div id="hud">
+  <h3>Disc Golf Draft 1</h3>
+  <button id="regen">Regenerate</button>
+</div>
+<div id="perf">
+  <div id="fps">FPS: --</div>
+  <div id="cells">Cells: --</div>
+  <div id="insts">Instances: --</div>
+  <div id="treecount">Trees: --</div>
+  <div id="holeinfo" style="margin-top:6px;border-top:1px solid #ccc;padding-top:6px;font-weight:bold">Hole 1 &middot; Throws: 0</div>
+</div>
+<div id="hint">Drag to orbit &middot; Shift+drag to pan &middot; Scroll to zoom &middot; Blue pad = tee, red = basket &middot; Tab = scorecard</div>
+<button id="nextHoleBtn" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:16px 32px;font-size:18px;border:2px solid #333;border-radius:8px;background:#4caf50;color:#fff;cursor:pointer;box-shadow:0 4px 10px rgba(0,0,0,.3)">Next Hole \u2192</button>
+<div id="scorecard" style="display:none;position:absolute;top:70px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:6px;padding:12px 16px;font-size:13px;color:#222;min-width:200px;box-shadow:0 2px 6px rgba(0,0,0,.15)">
+  <div style="font-weight:bold;margin-bottom:6px;text-align:center">Scorecard</div>
+  <div id="scorecardBody"></div>
+</div>
+<div id="escMenu" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:2000;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:8px;padding:24px 32px;min-width:220px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.3)">
+    <div style="font-size:18px;font-weight:bold;margin-bottom:16px">Menu</div>
+    <button id="resumeBtn" style="display:block;width:100%;padding:10px;margin-bottom:8px;font-size:14px;border:1px solid #999;border-radius:4px;background:#f5f5f5;cursor:pointer">Resume</button>
+    <button id="tutorialBtn" style="display:block;width:100%;padding:10px;font-size:14px;border:1px solid #999;border-radius:4px;background:#f5f5f5;cursor:pointer">How to Throw (Tutorial)</button>
+  </div>
+</div>
+<div id="tutorialOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:2100;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:8px;padding:20px 24px;max-width:380px;text-align:center;box-shadow:0 4px 16px rgba(0,0,0,.3)">
+    <div style="font-size:16px;font-weight:bold;margin-bottom:10px">How the Throw Works</div>
+    <div style="font-size:12px;color:#555;margin-bottom:10px;line-height:1.5">After you aim, <b>hold SPACE to charge power</b>. The longer you hold, the farther your throw can go &mdash; but releasing a bigger charge gives you less time to type, so a huge throw is riskier to land cleanly.</div>
+    <div style="font-size:13px;color:#D01012;font-weight:bold;margin-bottom:6px">Always start with A</div>
+    <div style="font-size:12px;color:#555;margin-bottom:10px;line-height:1.5">Each key after that bends the flight. Top row = curves one way. Home row = straight. Bottom row = curves the other way. Keys must move rightward across the keyboard, row to row or within a row. <b>The number of keys you land also sets your distance</b> &mdash; more keys, farther throw.</div>
+    <div id="tutKbGraphic" style="position:relative;margin:0 auto 10px;"></div>
+    <svg id="tutFlightSvg" width="300" height="140" style="background:#f7f7f7;border:1px solid #ccc;border-radius:4px;display:block;margin:0 auto 4px">
+      <line x1="10" y1="70" x2="290" y2="70" stroke="#ccc" stroke-dasharray="4,4"/>
+      <polyline id="tutFlightLine" fill="none" stroke="#D01012" stroke-width="3"/>
+    </svg>
+    <div id="tutKeyCountLabel" style="font-size:12px;color:#333;font-weight:bold;margin-bottom:10px"></div>
+    <div style="display:flex;gap:6px;margin-bottom:10px">
+      <button class="tutDemoBtn" data-demo="straight" style="flex:1;padding:8px;font-size:12px;border:1px solid #999;border-radius:4px;background:#f5f5f5;cursor:pointer">Straight</button>
+      <button class="tutDemoBtn" data-demo="left" style="flex:1;padding:8px;font-size:12px;border:1px solid #999;border-radius:4px;background:#f5f5f5;cursor:pointer">Curve Left</button>
+      <button class="tutDemoBtn" data-demo="right" style="flex:1;padding:8px;font-size:12px;border:1px solid #999;border-radius:4px;background:#f5f5f5;cursor:pointer">Curve Right</button>
+    </div>
+    <button id="tutorialCloseBtn" style="padding:8px 20px;font-size:13px;border:1px solid #999;border-radius:4px;background:#eee;cursor:pointer">Close</button>
+  </div>
+</div>
+<div id="throwhud" style="position:absolute;top:12px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #ccc;border-radius:6px;padding:8px 16px;font-size:13px;color:#222;min-width:280px;text-align:center;box-shadow:0 2px 6px rgba(0,0,0,.15)">
+  <div id="kbgraphic" style="position:relative;margin:0 auto 6px;display:none;"></div>
+  <div id="throwmsg">Click the tee pad to aim</div>
+  <div id="chargebar" style="height:10px;background:#ddd;border-radius:4px;margin-top:6px;overflow:hidden;display:none">
+    <div id="chargefill" style="height:100%;width:0%;background:#4caf50"></div>
+  </div>
+  <div id="keyseq" style="margin-top:4px;font-family:monospace;letter-spacing:3px;font-size:12px"></div>
+</div>
+<div id="throwresult" style="position:absolute;top:100px;right:12px;background:#fff;border:1px solid #ccc;border-radius:6px;padding:8px 10px;font-size:12px;color:#222;display:none;max-width:180px"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const BASE_N=160, BASE_W=80;
+const MAXN=240, MAXW=120, CAP=MAXN*MAXW, CELL=1;
+let N=160, W=Math.round(N/2);
+let seed=Math.random()*1000;
+let grid=[], tee=null, basket=null, trees=[];
+
+const ROWCHARS={top:'qwertyuiop',home:"asdfghjkl;",bottom:'zxcvbnm,./'};
+const ROWOFFSET={top:0,home:0.25,bottom:0.75};
+const ROWCURVE={top:-1,home:0,bottom:1};
+const ROWORDER={top:0,home:1,bottom:2};
+const KEYX={};
+Object.keys(ROWCHARS).forEach(row=>{
+  const s=ROWCHARS[row];
+  for(let i=0;i<s.length;i++) KEYX[s[i]]={row,x:i+ROWOFFSET[row]};
+});
+const MAX_CHARGE_MS=1500, MIN_WINDOW_MS=700, MAX_WINDOW_MS=3000, MAX_THROW=100, CURVE_STRENGTH=14, FLIGHT_MS=1300;
+const KB_UNIT=24, KB_KEYH=22, KB_GAP=2;
+function createKeyboardGraphic(containerId){
+  const box=document.getElementById(containerId);
+  const rowY={top:0, home:KB_KEYH+KB_GAP, bottom:2*(KB_KEYH+KB_GAP)};
+  const w=(9+0.75+1)*KB_UNIT, h=3*(KB_KEYH+KB_GAP);
+  box.style.width=w+'px'; box.style.height=h+'px';
+  const keyEls={};
+  Object.keys(ROWCHARS).forEach(row=>{
+    const s=ROWCHARS[row];
+    for(let i=0;i<s.length;i++){
+      const ch=s[i];
+      const x=(i+ROWOFFSET[row])*KB_UNIT;
+      const el=document.createElement('div');
+      el.textContent=ch.toUpperCase();
+      el.style.cssText='position:absolute;width:'+KB_KEYH+'px;height:'+KB_KEYH+'px;left:'+x+'px;top:'+rowY[row]+'px;background:#f0f0f0;border:1px solid #999;border-radius:3px;font-size:10px;line-height:'+KB_KEYH+'px;text-align:center;color:#333;font-family:monospace;';
+      box.appendChild(el);
+      keyEls[ch]=el;
+    }
+  });
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width',w); svg.setAttribute('height',h);
+  svg.style.cssText='position:absolute;left:0;top:0;pointer-events:none;';
+  const poly=document.createElementNS('http://www.w3.org/2000/svg','polyline');
+  poly.setAttribute('fill','none'); poly.setAttribute('stroke','#ffd54a'); poly.setAttribute('stroke-width','4');
+  poly.setAttribute('stroke-linecap','round'); poly.setAttribute('stroke-linejoin','round'); poly.setAttribute('opacity','0.85');
+  svg.appendChild(poly);
+  box.appendChild(svg);
+  const trailPts=[];
+  function keyCenter(ch){
+    const el=keyEls[ch];
+    return (parseFloat(el.style.left)+KB_KEYH/2)+','+(parseFloat(el.style.top)+KB_KEYH/2);
+  }
+  return {
+    keyEls,
+    reset(){ Object.values(keyEls).forEach(el=>{ el.style.background='#f0f0f0'; }); trailPts.length=0; poly.setAttribute('points',''); },
+    highlight(ch){ keyEls[ch].style.background='#ffd54a'; trailPts.push(keyCenter(ch)); poly.setAttribute('points',trailPts.join(' ')); }
+  };
+}
+const liveKb=createKeyboardGraphic('kbgraphic');
+function kbReset(){ liveKb.reset(); }
+function kbHighlight(ch){ liveKb.highlight(ch); }
+
+const tutKb=createKeyboardGraphic('tutKbGraphic');
+const TUTORIAL_DEMOS={
+  straight:{keys:['a','s','d','f','g','h','j','k','l',';']},
+  left:{keys:['a','s','d','g','u','i']},
+  right:{keys:['a','f','b','n']}
+};
+let tutTimer=null;
+function runTutorialDemo(name){
+  if(tutTimer){ clearTimeout(tutTimer); tutTimer=null; }
+  tutKb.reset();
+  const flightLine=document.getElementById('tutFlightLine');
+  flightLine.setAttribute('points','');
+  const demo=TUTORIAL_DEMOS[name];
+  const pts=[];
+  const maxW=280, totalW=maxW*(demo.keys.length/10);
+  const stepX=demo.keys.length>1?totalW/(demo.keys.length-1):0;
+  const label=document.getElementById('tutKeyCountLabel');
+  label.textContent=demo.keys.length+' of 10 keys \u2192 '+(demo.keys.length*10)+'% of max distance';
+  let i=0, cumY=0;
+  function step(){
+    if(i>=demo.keys.length){ tutTimer=null; return; }
+    const ch=demo.keys[i];
+    tutKb.highlight(ch);
+    cumY += ROWCURVE[KEYX[ch].row]*12;
+    pts.push((10+i*stepX)+','+(70+cumY));
+    flightLine.setAttribute('points', pts.join(' '));
+    i++;
+    tutTimer=setTimeout(step,350);
+  }
+  step();
+}
+let escMenuOpen=false, tutorialOpen=false;
+function setEscMenu(open){ escMenuOpen=open; document.getElementById('escMenu').style.display=open?'flex':'none'; }
+function openTutorial(){ tutorialOpen=true; document.getElementById('tutorialOverlay').style.display='flex'; runTutorialDemo('straight'); }
+function closeTutorial(){ tutorialOpen=false; document.getElementById('tutorialOverlay').style.display='none'; if(tutTimer){ clearTimeout(tutTimer); tutTimer=null; } }
+document.getElementById('resumeBtn').addEventListener('click',()=>setEscMenu(false));
+document.getElementById('tutorialBtn').addEventListener('click',()=>{ setEscMenu(false); openTutorial(); });
+document.getElementById('tutorialCloseBtn').addEventListener('click', closeTutorial);
+document.querySelectorAll('.tutDemoBtn').forEach(btn=>{
+  btn.addEventListener('click',()=>runTutorialDemo(btn.dataset.demo));
+});
+
+let throwMode='idle';
+let aimYaw=0, elevAngle=0.35;
+let aimDown=false, aimStartX=0, aimStartY=0;
+let chargeStart=0, chargeFraction=0;
+let throwFrom=null;
+let throwCount=0, holeNumber=1;
+const scorecard=[];
+function updateHoleInfo(){
+  document.getElementById('holeinfo').textContent='Hole '+holeNumber+' \u00b7 Throws: '+throwCount;
+}
+function updateScorecard(){
+  const body=document.getElementById('scorecardBody');
+  let total=0;
+  let html=scorecard.map(e=>{ total+=e.throws; return '<div>Hole '+e.hole+': '+e.throws+'</div>'; }).join('');
+  html+='<div style="border-top:1px solid #ccc;margin-top:4px;padding-top:4px">Hole '+holeNumber+' (current): '+throwCount+'</div>';
+  html+='<div style="font-weight:bold;margin-top:4px">Total: '+(total+throwCount)+'</div>';
+  body.innerHTML=html;
+}
+let typedKeys=[];
+let windowEnd=0;
+let flightStart=0, flightData=null;
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xb6c2ca);
+const camera=new THREE.PerspectiveCamera(50, innerWidth/innerHeight, 0.1, 500);
+const renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth, innerHeight);
+document.body.appendChild(renderer.domElement);
+
+scene.add(new THREE.AmbientLight(0xffffff,0.8));
+const dl=new THREE.DirectionalLight(0xffffff,0.55);
+dl.position.set(20,40,10);
+scene.add(dl);
+
+const target=new THREE.Vector3(N/2,0,W/2);
+function computeFitRadius(marginFrac){
+  marginFrac = marginFrac || 0.82;
+  const halfFovV=camera.fov*Math.PI/360;
+  const boundingR=Math.hypot(N,W)/2;
+  return (boundingR/Math.sin(halfFovV*marginFrac)) * 0.625;
+}
+let theta=-Math.PI/2, phi=1.0, radius=computeFitRadius();
+function updateCam(){
+  camera.position.x=target.x+radius*Math.sin(phi)*Math.sin(theta);
+  camera.position.z=target.z+radius*Math.sin(phi)*Math.cos(theta);
+  camera.position.y=target.y+radius*Math.cos(phi);
+  camera.lookAt(target);
+}
+updateCam();
+
+const raycaster=new THREE.Raycaster();
+const mouseNDC=new THREE.Vector2();
+const ARROW_LEN=24, ARROW_BASER=4.5;
+const arrowGeo=new THREE.ConeGeometry(ARROW_BASER, ARROW_LEN, 20, 1, true);
+arrowGeo.rotateX(Math.PI);
+arrowGeo.translate(0, ARROW_LEN/2, 0);
+const aimArrow=new THREE.Mesh(arrowGeo, new THREE.MeshBasicMaterial({color:0xD01012, transparent:true, opacity:0.3, side:THREE.DoubleSide}));
+aimArrow.visible=false;
+scene.add(aimArrow);
+const discMesh=new THREE.Mesh(new THREE.CylinderGeometry(0.6,0.6,0.15,16), new THREE.MeshLambertMaterial({color:0xffa000}));
+discMesh.visible=false;
+scene.add(discMesh);
+
+const MAX_TRAIL=200;
+const trailGeo=new THREE.BufferGeometry();
+const trailPositions=new Float32Array(MAX_TRAIL*3);
+trailGeo.setAttribute('position', new THREE.BufferAttribute(trailPositions,3));
+trailGeo.setDrawRange(0,0);
+const trailLine=new THREE.Line(trailGeo, new THREE.LineBasicMaterial({color:0xffa000, transparent:true, opacity:0.5}));
+trailLine.frustumCulled=false;
+scene.add(trailLine);
+let trailCount=0;
+function addTrailPoint(p){
+  if(trailCount>=MAX_TRAIL)return;
+  trailPositions[trailCount*3]=p.x; trailPositions[trailCount*3+1]=p.y; trailPositions[trailCount*3+2]=p.z;
+  trailCount++;
+  trailGeo.setDrawRange(0,trailCount);
+  trailGeo.attributes.position.needsUpdate=true;
+}
+
+const arrowMtx=new THREE.Matrix4();
+function updateAimArrow(){
+  if(!throwFrom)return;
+  const th=grid[throwFrom.x][throwFrom.y].h;
+  aimArrow.position.set(throwFrom.x*CELL, th+0.3, throwFrom.y*CELL);
+  const fwd=new THREE.Vector3(Math.cos(aimYaw), elevAngle*0.8, Math.sin(aimYaw)).normalize();
+  const right=new THREE.Vector3(-Math.sin(aimYaw),0,Math.cos(aimYaw));
+  const up=new THREE.Vector3().crossVectors(right,fwd).normalize();
+  arrowMtx.makeBasis(right,fwd,up);
+  aimArrow.quaternion.setFromRotationMatrix(arrowMtx);
+  aimArrow.visible=true;
+}
+function resetThrowUI(){
+  throwMode='idle'; aimArrow.visible=false;
+  if(camPanTimer){ clearTimeout(camPanTimer); camPanTimer=null; }
+  camPanActive=false;
+  document.getElementById('throwresult').style.display='none';
+  document.getElementById('chargebar').style.display='none';
+  document.getElementById('keyseq').textContent='';
+  document.getElementById('kbgraphic').style.display='none';
+  document.getElementById('nextHoleBtn').style.display='none';
+  kbReset();
+  trailCount=0; trailGeo.setDrawRange(0,0);
+  document.getElementById('throwmsg').textContent='Click the tee pad to aim';
+}
+
+let dragging=false, lx=0, ly=0;
+renderer.domElement.addEventListener('mousedown',e=>{
+  if(throwMode==='idle'||throwMode==='aimed'){
+    const rect=renderer.domElement.getBoundingClientRect();
+    mouseNDC.x=((e.clientX-rect.left)/rect.width)*2-1;
+    mouseNDC.y=-((e.clientY-rect.top)/rect.height)*2+1;
+    raycaster.setFromCamera(mouseNDC,camera);
+    const targets=[teeMesh,discMesh].filter(m=>m);
+    const hit=raycaster.intersectObjects(targets)[0];
+    if(hit){
+      if(hit.object===discMesh){
+        const gx=Math.max(0,Math.min(N-1,Math.round(discMesh.position.x/CELL)));
+        const gz=Math.max(0,Math.min(W-1,Math.round(discMesh.position.z/CELL)));
+        throwFrom={x:gx,y:gz};
+      } else {
+        throwFrom={x:tee.x,y:tee.y};
+      }
+      throwMode='aiming'; aimDown=true; aimStartX=e.clientX; aimStartY=e.clientY;
+      aimYaw=0; elevAngle=0.35;
+      if(camPanTimer){ clearTimeout(camPanTimer); camPanTimer=null; }
+      camPanActive=false;
+      document.getElementById('kbgraphic').style.display='block';
+      document.getElementById('throwresult').style.display='none';
+      kbReset();
+      document.getElementById('throwmsg').textContent='Drag to aim, release to lock';
+      updateAimArrow();
+      return;
+    }
+  }
+  if(throwMode==='idle'||throwMode==='aimed'){ dragging=true;lx=e.clientX;ly=e.clientY; }
+});
+window.addEventListener('mouseup',()=>{
+  if(throwMode==='aiming'){
+    throwMode='aimed'; aimDown=false;
+    document.getElementById('throwmsg').textContent='Hold SPACE to charge power';
+  }
+  dragging=false;
+});
+window.addEventListener('mousemove',e=>{
+  if(throwMode==='aiming'&&aimDown){
+    const dx=e.clientX-aimStartX, dy=e.clientY-aimStartY;
+    aimYaw=Math.max(-0.6,Math.min(0.6,dx*0.003));
+    elevAngle=Math.max(0.1,Math.min(1.0,0.35-dy*0.002));
+    updateAimArrow();
+    return;
+  }
+  if(!dragging)return;
+  const dx=e.clientX-lx, dy=e.clientY-ly; lx=e.clientX; ly=e.clientY;
+  if(e.shiftKey){
+    const right=new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion);
+    const up=new THREE.Vector3(0,1,0).applyQuaternion(camera.quaternion);
+    const panSpeed=radius*0.0015;
+    target.addScaledVector(right, -dx*panSpeed);
+    target.addScaledVector(up, dy*panSpeed);
+  } else {
+    theta-=dx*0.006;
+    phi=Math.max(0.25,Math.min(1.45,phi-dy*0.006));
+  }
+  updateCam();
+});
+
+window.addEventListener('keydown',e=>{
+  if(e.code==='Escape'){
+    e.preventDefault();
+    if(tutorialOpen) closeTutorial();
+    else setEscMenu(!escMenuOpen);
+    return;
+  }
+  if(escMenuOpen || tutorialOpen) return;
+  if(e.code==='Tab'){
+    e.preventDefault();
+    const sc=document.getElementById('scorecard');
+    if(sc.style.display==='none'){ updateScorecard(); sc.style.display='block'; }
+    else sc.style.display='none';
+    return;
+  }
+  if(e.code==='Space'){
+    e.preventDefault();
+    if(throwMode==='aimed'){
+      throwMode='charging'; chargeStart=performance.now();
+      document.getElementById('chargebar').style.display='block';
+      document.getElementById('throwmsg').textContent='Charging... release to lock power';
+    }
+    return;
+  }
+  if(throwMode==='typing'){
+    const k=e.key.toLowerCase();
+    if(!KEYX[k])return;
+    if(typedKeys.length===0){
+      if(k!=='a')return;
+    } else {
+      const last=typedKeys[typedKeys.length-1];
+      if(KEYX[k].x<=last.x) return;
+      if(Math.abs(ROWORDER[KEYX[k].row]-ROWORDER[last.row])>1) return;
+    }
+    typedKeys.push({x:KEYX[k].x,row:KEYX[k].row,ch:k});
+    document.getElementById('keyseq').textContent=typedKeys.map(t=>t.ch.toUpperCase()).join(' ');
+    kbHighlight(k);
+    if(typedKeys.length>=10) resolveThrow();
+  }
+});
+window.addEventListener('keyup',e=>{
+  if(e.code==='Space' && throwMode==='charging'){
+    chargeFraction=Math.max(0,Math.min(1,(performance.now()-chargeStart)/MAX_CHARGE_MS));
+    document.getElementById('chargebar').style.display='none';
+    throwMode='typing';
+    typedKeys=[];
+    document.getElementById('keyseq').textContent='';
+    kbReset();
+    const winMs=MAX_WINDOW_MS-chargeFraction*(MAX_WINDOW_MS-MIN_WINDOW_MS);
+    windowEnd=performance.now()+winMs;
+    document.getElementById('throwmsg').textContent='Type starting with A! ('+Math.round(winMs)+'ms)';
+  }
+});
+
+function resolveThrow(){
+  if(typedKeys.length===0){
+    throwMode='aimed';
+    document.getElementById('keyseq').textContent='';
+    kbReset();
+    document.getElementById('throwmsg').textContent='No input \u2014 hold SPACE to try again (no stroke taken)';
+    return;
+  }
+  throwCount++; updateHoleInfo(); updateScorecard();
+  const keyFraction=typedKeys.length/10;
+  const distance=MAX_THROW*chargeFraction*keyFraction;
+  const firstX=typedKeys.length?typedKeys[0].x:KEYX['a'].x;
+  const lastX=typedKeys.length?typedKeys[typedKeys.length-1].x:firstX;
+  const span=lastX-firstX;
+  const ctrl=typedKeys.map(k=>({t:span?(k.x-firstX)/span:0, v:ROWCURVE[k.row]}));
+  if(!ctrl.length) ctrl.push({t:0,v:0});
+  const n=ctrl.length;
+  const tan=new Array(n).fill(0);
+  if(n>1){
+    const sec=[];
+    for(let i=0;i<n-1;i++) sec[i]=(ctrl[i+1].v-ctrl[i].v)/((ctrl[i+1].t-ctrl[i].t)||1e-6);
+    tan[0]=sec[0]; tan[n-1]=sec[n-2];
+    for(let i=1;i<n-1;i++) tan[i]=(sec[i-1]+sec[i])/2;
+    for(let k=0;k<n-1;k++) if(sec[k]===0){ tan[k]=0; tan[k+1]=0; }
+    for(let k=0;k<n-1;k++){
+      if(sec[k]===0) continue;
+      let a=tan[k]/sec[k], b=tan[k+1]/sec[k];
+      if(a<0){ tan[k]=0; a=0; }
+      if(b<0){ tan[k+1]=0; b=0; }
+      const h=a*a+b*b;
+      if(h>9){ const t=3/Math.sqrt(h); tan[k]=t*a*sec[k]; tan[k+1]=t*b*sec[k]; }
+    }
+  }
+  function lateralAt(s){
+    if(n===1) return ctrl[0].v;
+    if(s<=ctrl[0].t) return ctrl[0].v;
+    if(s>=ctrl[n-1].t) return ctrl[n-1].v;
+    for(let i=0;i<n-1;i++){
+      if(s>=ctrl[i].t&&s<=ctrl[i+1].t){
+        const dt=(ctrl[i+1].t-ctrl[i].t)||1;
+        const u=(s-ctrl[i].t)/dt;
+        const u2=u*u, u3=u2*u;
+        const h00=2*u3-3*u2+1, h10=u3-2*u2+u, h01=-2*u3+3*u2, h11=u3-u2;
+        return h00*ctrl[i].v + h10*dt*tan[i] + h01*ctrl[i+1].v + h11*dt*tan[i+1];
+      }
+    }
+    return 0;
+  }
+  const SAMP=41, BLUR_R=7;
+  const ds=1/(SAMP-1);
+  const raw=new Array(SAMP);
+  for(let i=0;i<SAMP;i++) raw[i]=lateralAt(i/(SAMP-1));
+  const curvature=new Array(SAMP);
+  for(let i=0;i<SAMP;i++){
+    let sum=0,cnt=0;
+    for(let j=Math.max(0,i-BLUR_R); j<=Math.min(SAMP-1,i+BLUR_R); j++){ sum+=raw[j]; cnt++; }
+    curvature[i]=sum/cnt;
+  }
+  const heading=new Array(SAMP); heading[0]=0;
+  for(let i=1;i<SAMP;i++) heading[i]=heading[i-1]+curvature[i]*ds;
+  const posArr=new Array(SAMP); posArr[0]=0;
+  for(let i=1;i<SAMP;i++) posArr[i]=posArr[i-1]+heading[i]*ds;
+  let maxAbs=1e-6;
+  for(let i=0;i<SAMP;i++) maxAbs=Math.max(maxAbs,Math.abs(posArr[i]));
+  for(let i=0;i<SAMP;i++) posArr[i]/=maxAbs;
+  function lateralAtSmooth(s){
+    const pos=Math.max(0,Math.min(SAMP-1, s*(SAMP-1)));
+    const i0=Math.floor(pos), i1=Math.min(SAMP-1,i0+1), f=pos-i0;
+    return posArr[i0]+(posArr[i1]-posArr[i0])*f;
+  }
+  const forward=new THREE.Vector3(Math.cos(aimYaw),0,Math.sin(aimYaw));
+  const perp=new THREE.Vector3(-Math.sin(aimYaw),0,Math.cos(aimYaw));
+  const teeH=grid[throwFrom.x][throwFrom.y].h;
+  const teePos=new THREE.Vector3(throwFrom.x*CELL, teeH, throwFrom.y*CELL);
+  const peakH=2+elevAngle*8;
+  const built=buildFlightPath(forward,perp,distance,teePos,peakH,lateralAtSmooth);
+  flightData={waypoints:built.waypoints, outcome:built.outcome, bounces:built.bounces, distance};
+  throwMode='flying'; flightStart=performance.now();
+  aimArrow.visible=false;
+  discMesh.visible=true;
+  document.getElementById('kbgraphic').style.display='none';
+  trailCount=0; trailGeo.setDrawRange(0,0);
+  document.getElementById('throwmsg').textContent='Flying...';
+}
+function groundHeightAt(x,z,fallback){
+  const gx=Math.max(0,Math.min(N-1,Math.round(x))), gz=Math.max(0,Math.min(W-1,Math.round(z)));
+  return (grid[gx]&&grid[gx][gz])?grid[gx][gz].h:fallback;
+}
+function isOutOfCourse(x,z){
+  const gx=Math.max(0,Math.min(N-1,Math.round(x))), gz=Math.max(0,Math.min(W-1,Math.round(z)));
+  return !grid[gx] || !grid[gx][gz] || grid[gx][gz].oob;
+}
+function treeCollisionCheck(px,py,pz,passedCanopy){
+  for(const tr of trees){
+    const prof=TREE_COLLISION[tr.species][tr.big?'big':'normal'];
+    const vs=VOX*tr.scale;
+    const dx=px-tr.x*CELL, dz=pz-tr.y*CELL;
+    const horizD=Math.hypot(dx,dz);
+    const maxR=Math.max(prof.trunkR,prof.canopyR)*vs+2;
+    if(horizD>maxR) continue;
+    const trunkR=prof.trunkR*vs, trunkTopY=tr.h+prof.trunkH*vs;
+    if(horizD<=trunkR && py>=tr.h && py<=trunkTopY) return {type:'trunk', tree:tr};
+    const canopyR=prof.canopyR*vs, canYmin=tr.h+prof.canopyYmin*vs, canYmax=tr.h+prof.canopyYmax*vs;
+    if(horizD<=canopyR && py>=canYmin && py<=canYmax && !passedCanopy.has(tr)){
+      if(Math.random()<0.8) return {type:'canopy', tree:tr};
+      passedCanopy.add(tr);
+    }
+  }
+  return null;
+}
+function buildFlightPath(forward,perp,distance,teePos,peakH,lateralAt){
+  const waypoints=[{x:teePos.x,y:teePos.y,z:teePos.z}];
+  const passedCanopy=new Set();
+  let curPos={x:teePos.x,y:teePos.y,z:teePos.z};
+  let dirX=forward.x, dirZ=forward.z;
+  let remaining=distance, traveledOnOriginal=0, curPeak=peakH;
+  let firstLeg=true, bounces=0, outcome='landed', skipTree=null;
+  let crossingPt=null, crossingIdx=-1;
+  const MAX_BOUNCES=3;
+  while(true){
+    const legLen=remaining;
+    const samples=Math.max(8,Math.round(legLen*0.9));
+    let hitAt=-1, hit=null;
+    for(let i=1;i<=samples;i++){
+      const t=i/samples, travel=t*legLen;
+      let px,pz,py;
+      if(firstLeg){
+        const s=(traveledOnOriginal+travel)/distance;
+        const lat=lateralAt(s)*CURVE_STRENGTH*(distance/MAX_THROW);
+        px=teePos.x+forward.x*distance*s+perp.x*lat;
+        pz=teePos.z+forward.z*distance*s+perp.z*lat;
+        const gH=groundHeightAt(px,pz,teePos.y);
+        py=teePos.y+(gH-teePos.y)*s+curPeak*Math.sin(Math.PI*s);
+      } else {
+        px=curPos.x+dirX*travel; pz=curPos.z+dirZ*travel;
+        const gH=groundHeightAt(px,pz,curPos.y);
+        py=curPos.y+(gH-curPos.y)*t+curPeak*Math.sin(Math.PI*t);
+      }
+      if(isOutOfCourse(px,pz)){
+        if(crossingPt===null){ crossingPt=waypoints[waypoints.length-1]; crossingIdx=waypoints.length-1; }
+      } else {
+        crossingPt=null; crossingIdx=-1;
+      }
+      waypoints.push({x:px,y:py,z:pz});
+      const found=treeCollisionCheck(px,py,pz,passedCanopy);
+      if(found && found.tree!==skipTree){ hitAt=t; hit={pos:{x:px,y:py,z:pz},type:found.type,tree:found.tree}; break; }
+    }
+    if(hitAt<0) break;
+    bounces++;
+    const distRemainingAfterHit=legLen-hitAt*legLen;
+    const lossFrac=0.3+Math.random()*0.25;
+    const carryDist=distRemainingAfterHit*(1-lossFrac);
+    const rollStop = hit.type==='trunk' ? Math.random()<0.55 : Math.random()<0.65;
+    if(bounces>MAX_BOUNCES || rollStop || carryDist<2){
+      const gH=groundHeightAt(hit.pos.x,hit.pos.z,hit.pos.y);
+      const dropSteps=14;
+      for(let i=1;i<=dropSteps;i++){
+        const ft=i/dropSteps;
+        waypoints.push({x:hit.pos.x, y:hit.pos.y+(gH-hit.pos.y)*ft, z:hit.pos.z});
+      }
+      outcome = hit.type;
+      break;
+    } else {
+      const angleRange = hit.type==='trunk' ? (Math.PI*(60/180)+Math.random()*Math.PI*(110/180)) : (Math.PI*(20/180)+Math.random()*Math.PI*(70/180));
+      const sign = Math.random()<0.5?1:-1;
+      const curAngle=Math.atan2(firstLeg?forward.z:dirZ, firstLeg?forward.x:dirX);
+      const newAngle=curAngle+sign*angleRange;
+      dirX=Math.cos(newAngle); dirZ=Math.sin(newAngle);
+      curPos=hit.pos; remaining=carryDist; curPeak=Math.max(1.2,curPeak*0.55);
+      firstLeg=false; skipTree=hit.tree; outcome='redirect';
+    }
+  }
+  const last=waypoints[waypoints.length-1];
+  if(isOutOfCourse(last.x,last.z) && crossingIdx>=0){
+    return {waypoints: waypoints.slice(0,crossingIdx+1), outcome:'oob', bounces};
+  }
+  return {waypoints, outcome, bounces};
+}
+function pathAt(s){
+  const wp=flightData.waypoints;
+  const pos=Math.max(0,Math.min(wp.length-1, s*(wp.length-1)));
+  const i0=Math.floor(pos), i1=Math.min(wp.length-1,i0+1), f=pos-i0;
+  const x=wp[i0].x+(wp[i1].x-wp[i0].x)*f;
+  const y=wp[i0].y+(wp[i1].y-wp[i0].y)*f;
+  const z=wp[i0].z+(wp[i1].z-wp[i0].z)*f;
+  const gx=Math.max(0,Math.min(N-1,Math.round(x))), gz=Math.max(0,Math.min(W-1,Math.round(z)));
+  const groundH=(grid[gx]&&grid[gx][gz])?grid[gx][gz].h:y;
+  return {x,y,z,gx,gz,groundH};
+}
+let camPanActive=false, camPanStart=0, camPanTimer=null;
+const CAM_PAN_DELAY=2500, CAM_PAN_MS=1800;
+const camPanFrom=new THREE.Vector3(), camPanTo=new THREE.Vector3();
+let camPanFromR=0, camPanToR=0;
+function startCameraPanToLie(gx,gy,gh){
+  camPanFrom.copy(target);
+  camPanFromR=radius;
+  camPanTo.set(gx*CELL, gh, gy*CELL);
+  camPanToR=Math.max(18, Math.max(N,W)*0.35);
+  camPanStart=performance.now();
+  camPanActive=true;
+}
+function scheduleCameraPan(gx,gy,gh){
+  if(camPanTimer){ clearTimeout(camPanTimer); }
+  camPanTimer=setTimeout(()=>{ startCameraPanToLie(gx,gy,gh); camPanTimer=null; }, CAM_PAN_DELAY);
+}
+function finishFlight(){
+  const p=pathAt(1);
+  discMesh.position.set(p.x,p.groundH+0.1,p.z);
+  const water=grid[p.gx]&&grid[p.gx][p.gz]&&grid[p.gx][p.gz].water;
+  const dist=Math.round(flightData.distance);
+  const outcomePrefix = flightData.outcome==='trunk' ? 'Hit a trunk \u2014 ' : flightData.outcome==='canopy' ? 'Caught in the canopy \u2014 ' : '';
+  if(flightData.outcome==='oob'){
+    throwCount++; updateHoleInfo(); updateScorecard();
+    document.getElementById('throwresult').style.display='block';
+    document.getElementById('throwresult').textContent='OUT OF BOUNDS \u2014 dropped at the line \u00b7 +1 stroke penalty';
+  } else {
+    document.getElementById('throwresult').style.display='block';
+    document.getElementById('throwresult').textContent=outcomePrefix+(water?'IN WATER \u2014 OUT OF BOUNDS':'Landed safely')+' \u00b7 '+dist+' blocks';
+  }
+  throwMode='idle';
+  document.getElementById('throwmsg').textContent='Click the disc to play your next shot';
+  scheduleCameraPan(p.gx,p.gz,p.groundH);
+}
+function holeOut(){
+  const bh=grid[basket.x][basket.y].h;
+  discMesh.position.set(basket.x*CELL, bh+1.0, basket.y*CELL);
+  document.getElementById('throwresult').style.display='block';
+  document.getElementById('throwresult').textContent='CHAINS! Holed out \u00b7 '+Math.round(flightData.distance)+' blocks';
+  throwMode='idle';
+  throwFrom={x:basket.x,y:basket.y};
+  document.getElementById('throwmsg').textContent='Hole complete!';
+  document.getElementById('nextHoleBtn').style.display='block';
+  scheduleCameraPan(basket.x,basket.y,bh);
+}
+renderer.domElement.addEventListener('wheel',e=>{
+  radius=Math.max(8,Math.min(Math.max(N,W)*2.5,radius+e.deltaY*0.02));
+  updateCam();
+});
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+function noise2(x,y){
+  let n=0, amp=1, freq=0.09, total=0;
+  for(let o=0;o<4;o++){
+    n+=amp*Math.sin(x*freq+seed*(o*1.7+1))*Math.cos(y*freq*0.85+seed*(o*2.3+1));
+    total+=amp;
+    freq*=2.15; amp*=0.55;
+  }
+  return n/total;
+}
+const MAXH=9;
+let distField=null;
+function heightAt(x,y){
+  const dist = distField ? distField[x][y] : 0;
+  const riseRate = MAXH/(W*0.4);
+  const rise = Math.min(MAXH, dist*riseRate);
+  const n = noise2(x,y);
+  return Math.max(0,Math.min(MAXH,Math.round(rise + n*3.0)));
+}
+
+function pickEdgePoint(){
+  const e=Math.floor(Math.random()*4);
+  if(e===0) return {x:0,y:Math.floor(Math.random()*W)};
+  if(e===1) return {x:N-1,y:Math.floor(Math.random()*W)};
+  if(e===2) return {x:Math.floor(Math.random()*N),y:0};
+  return {x:Math.floor(Math.random()*N),y:W-1};
+}
+function genRiverPathDiagonal(){
+  let start=pickEdgePoint(), end=pickEdgePoint(), tries=0;
+  while(Math.hypot(start.x-end.x,start.y-end.y)<Math.min(N,W)*0.6 && tries<20){ end=pickEdgePoint(); tries++; }
+  let fx=start.x, fy=start.y;
+  let heading=Math.atan2(end.y-fy,end.x-fx), turnRate=0;
+  const path=[{x:Math.round(fx),y:Math.round(fy)}];
+  let guard=0;
+  while(guard++<(N+W)*2){
+    const dx=end.x-fx, dy=end.y-fy;
+    if(Math.hypot(dx,dy)<2) break;
+    const desired=Math.atan2(dy,dx);
+    let diff=desired-heading;
+    while(diff>Math.PI) diff-=2*Math.PI;
+    while(diff<-Math.PI) diff+=2*Math.PI;
+    turnRate += (Math.random()-0.5)*0.12 + diff*0.03;
+    turnRate = Math.max(-0.25,Math.min(0.25,turnRate*0.92));
+    heading += turnRate;
+    fx=Math.max(0,Math.min(N-1,fx+Math.cos(heading)));
+    fy=Math.max(0,Math.min(W-1,fy+Math.sin(heading)));
+    const cx=Math.round(fx), cy=Math.round(fy), last=path[path.length-1];
+    if(cx!==last.x||cy!==last.y) path.push({x:cx,y:cy});
+  }
+  return path;
+}
+
+function genHillPeaks(){
+  const peaks=[], K=2+Math.floor(Math.random()*3);
+  for(let i=0;i<K;i++) peaks.push({x:Math.random()*N, y:Math.random()*W, h:6+Math.random()*(MAXH-5), r:(N+W)/9*(0.5+Math.random()*0.6)});
+  return peaks;
+}
+function hillsHeightAt(x,y,peaks){
+  let h=0;
+  for(const p of peaks){
+    const d=Math.hypot(x-p.x,y-p.y);
+    h=Math.max(h, p.h*Math.exp(-(d*d)/(2*p.r*p.r)));
+  }
+  const n=noise2(x,y);
+  return Math.max(0,Math.min(MAXH,Math.round(h+n*1.0)));
+}
+function pickTerrainType(){
+  const r=Math.random();
+  if(r<0.4) return 'wet';
+  if(r<0.65) return 'dry';
+  return 'hills';
+}
+
+function genTributaryPaths(mainPath, count){
+  const paths=[];
+  const network=mainPath.map(p=>({x:p.x,y:p.y}));
+  for(let t=0;t<count;t++){
+    let start=null, tries=0;
+    while(tries<200 && !start){
+      tries++;
+      const x=Math.floor(Math.random()*N), y=Math.floor(Math.random()*W);
+      let minD=Infinity;
+      for(const p of network){
+        const d=Math.max(Math.abs(x-p.x),Math.abs(y-p.y));
+        if(d<minD) minD=d;
+        if(minD<8) break;
+      }
+      if(minD>=8) start={x,y};
+    }
+    if(!start) continue;
+    let target=null, minD=Infinity;
+    for(const p of network){
+      const d=Math.max(Math.abs(start.x-p.x),Math.abs(start.y-p.y));
+      if(d<minD){ minD=d; target=p; }
+    }
+    let fx=start.x+0.5, fy=start.y+0.5;
+    let heading=Math.atan2(target.y-fy, target.x-fx);
+    let turnRate=0;
+    const path=[{x:start.x,y:start.y}];
+    const seen=new Set([start.x+','+start.y]);
+    const stepLen=0.75;
+    let guard=0;
+    while(guard++<N*6){
+      const dx=target.x-fx, dy=target.y-fy;
+      if(Math.hypot(dx,dy)<1.5) break;
+      const desired=Math.atan2(dy,dx);
+      let diff=desired-heading;
+      while(diff>Math.PI) diff-=2*Math.PI;
+      while(diff<-Math.PI) diff+=2*Math.PI;
+      turnRate += (Math.random()-0.5)*0.14 + diff*0.02;
+      turnRate = Math.max(-0.3,Math.min(0.3,turnRate*0.92));
+      heading += turnRate;
+      fx=Math.max(0,Math.min(N-1,fx+Math.cos(heading)*stepLen));
+      fy=Math.max(0,Math.min(W-1,fy+Math.sin(heading)*stepLen));
+      const cx=Math.round(fx), cy=Math.round(fy);
+      const key=cx+','+cy;
+      if(!seen.has(key)){ path.push({x:cx,y:cy}); seen.add(key); }
+      let reached=false;
+      for(const p of network){ if(Math.max(Math.abs(cx-p.x),Math.abs(cy-p.y))<=1){ reached=true; break; } }
+      if(reached) break;
+    }
+    if(path.length>4){ paths.push(path); network.push(...path); }
+  }
+  return paths;
+}
+
+function computeDistField(cells){
+  const dist=Array.from({length:N},()=>new Array(W).fill(Infinity));
+  const queue=[];
+  for(const [x,y] of cells){ if(dist[x][y]!==0){ dist[x][y]=0; queue.push([x,y]); } }
+  let qi=0;
+  while(qi<queue.length){
+    const [x,y]=queue[qi++];
+    const d=dist[x][y];
+    for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
+      if(ox===0&&oy===0) continue;
+      const gx=x+ox,gy=y+oy;
+      if(gx<0||gy<0||gx>=N||gy>=W) continue;
+      if(dist[gx][gy]>d+1){ dist[gx][gy]=d+1; queue.push([gx,gy]); }
+    }
+  }
+  return dist;
+}
+
+function markRiver(path, r){
+  for(const p of path){
+    for(let ox=-r;ox<=r;ox++)for(let oy=-r;oy<=r;oy++){
+      const gx=p.x+ox, gy=p.y+oy;
+      if(gx<0||gy<0||gx>=N||gy>=W) continue;
+      if(Math.abs(ox)+Math.abs(oy)<=r) grid[gx][gy].water=true;
+    }
+  }
+}
+
+function floodPond(sx,sy,maxSize){
+  const startH=grid[sx][sy].h;
+  const ceiling=startH+1;
+  const seen=new Set();
+  const queue=[[sx,sy]];
+  let count=0;
+  while(queue.length && count<maxSize){
+    const [x,y]=queue.shift();
+    const key=x+','+y;
+    if(seen.has(key)) continue;
+    seen.add(key);
+    if(x<0||y<0||x>=N||y>=W) continue;
+    const c=grid[x][y];
+    if(c.water) continue;
+    if(c.h>ceiling) continue;
+    c.water=true;
+    count++;
+    for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
+      if(ox===0&&oy===0) continue;
+      queue.push([x+ox,y+oy]);
+    }
+  }
+}
+
+function findFarBasin(){
+  let best=null, bestH=99;
+  for(let x=0;x<N;x++)for(let y=0;y<W;y++){
+    const c=grid[x][y];
+    if(c.water) continue;
+    let nearWater=false;
+    for(let ox=-4;ox<=4&&!nearWater;ox++)for(let oy=-4;oy<=4&&!nearWater;oy++){
+      const gx=x+ox,gy=y+oy;
+      if(gx<0||gy<0||gx>=N||gy>=W) continue;
+      if(grid[gx][gy].water) nearWater=true;
+    }
+    if(nearWater) continue;
+    if(c.h<bestH){ bestH=c.h; best={x,y}; }
+  }
+  return best;
+}
+
+function placeTeeBasket(){
+  const mx=Math.round(N*0.1), my=Math.round(W*0.1);
+  const usableX=N-2*mx, usableY=W-2*my;
+  function pick(xMin,xMax){
+    for(let t=0;t<40;t++){
+      const x=xMin+Math.floor(Math.random()*Math.max(1,xMax-xMin));
+      const y=my+Math.floor(Math.random()*usableY);
+      if(x>=0&&x<N&&y>=0&&y<W&&!grid[x][y].water) return {x,y};
+    }
+    return {x:Math.round((xMin+xMax)/2), y:Math.round(W/2)};
+  }
+  const zone=Math.floor(usableX*0.25);
+  tee=pick(mx, mx+zone);
+  basket=pick(N-mx-zone, N-mx);
+}
+
+let boundaryParams=null;
+function computeBoundaryParams(){
+  const dx=basket.x-tee.x, dy=basket.y-tee.y;
+  const L=Math.hypot(dx,dy)||1;
+  const dirX=dx/L, dirY=dy/L, perpX=-dirY, perpY=dirX;
+  const m=1+Math.floor(Math.random()*3);
+  const islands=[{x:tee.x,y:tee.y,r:W*(0.28+Math.random()*0.17)}];
+  for(let i=1;i<=m;i++){
+    const t=i/(m+1);
+    const baseX=tee.x+dirX*t*L, baseY=tee.y+dirY*t*L;
+    const offset=(Math.random()*2-1)*W*0.3;
+    const along=(Math.random()*2-1)*(L/(m+1))*0.3;
+    islands.push({
+      x: baseX+perpX*offset+dirX*along,
+      y: baseY+perpY*offset+dirY*along,
+      r: W*(0.22+Math.random()*0.18)
+    });
+  }
+  islands.push({x:basket.x,y:basket.y,r:W*(0.28+Math.random()*0.17)});
+  for(let pass=0;pass<3;pass++){
+    for(let i=0;i<islands.length-1;i++){
+      const a=islands[i], b=islands[i+1];
+      const d=Math.hypot(a.x-b.x,a.y-b.y);
+      const need=d*1.15, have=a.r+b.r;
+      if(have<need){ const f=need/have; a.r*=f; b.r*=f; }
+    }
+  }
+  const avgR=islands.reduce((s,is)=>s+is.r,0)/islands.length;
+  return {
+    islands, k:avgR*0.6,
+    wiggleAmt: W*(0.05+Math.random()*0.05),
+    wiggleFreq: 0.05+Math.random()*0.05,
+    wiggleSeed: Math.random()*1000
+  };
+}
+function sminBoundary(a,b,k){
+  const h=Math.max(k-Math.abs(a-b),0)/k;
+  return Math.min(a,b)-h*h*k*0.25;
+}
+function boundarySDF(x,y,p){
+  let d=Math.hypot(x-p.islands[0].x,y-p.islands[0].y)-p.islands[0].r;
+  for(let i=1;i<p.islands.length;i++){
+    const isl=p.islands[i];
+    d=sminBoundary(d, Math.hypot(x-isl.x,y-isl.y)-isl.r, p.k);
+  }
+  return d;
+}
+function boundaryNoise(x,y,p){
+  return Math.sin(x*p.wiggleFreq+p.wiggleSeed)*Math.cos(y*p.wiggleFreq*0.8+p.wiggleSeed*1.3);
+}
+function inCourseBounds(x,y,p){
+  return (boundarySDF(x,y,p) - boundaryNoise(x,y,p)*p.wiggleAmt) <= 0;
+}
+function markBoundary(){
+  boundaryParams=computeBoundaryParams();
+  const edgeSeed=Math.random()*1000, edgeFreq=0.15+Math.random()*0.1, edgeMargin=5;
+  for(let x=0;x<N;x++)for(let y=0;y<W;y++){
+    let oob=!inCourseBounds(x,y,boundaryParams);
+    if(!oob){
+      const edgeDist=Math.min(x,N-1-x,y,W-1-y);
+      if(edgeDist<edgeMargin){
+        const en=Math.sin(x*edgeFreq+edgeSeed)*Math.cos(y*edgeFreq*0.9+edgeSeed*1.7);
+        const erodeThreshold=((edgeMargin-edgeDist)/edgeMargin)*0.8;
+        if(en*0.5+0.5<erodeThreshold) oob=true;
+      }
+    }
+    grid[x][y].oob=oob;
+  }
+}
+
+function placeTrees(){
+  trees=[];
+  const dRoll=Math.random();
+  const densityFactor = dRoll<0.15?0.3 : dRoll<0.85?1.0 : 2.0;
+  const bRoll=Math.random();
+  const bigBias = bRoll<0.1?0.85 : bRoll<0.85?0.18 : 0.04;
+
+  const numClusters=4+Math.floor(Math.random()*5);
+  const clusters=[];
+  for(let i=0;i<numClusters;i++){
+    clusters.push({
+      cx:Math.random()*N, cy:Math.random()*W,
+      species:TREE_SPECIES[Math.floor(Math.random()*TREE_SPECIES.length)],
+      radius:6+Math.random()*10,
+      bigCopse: Math.random()<0.25
+    });
+  }
+  const base=Math.min(MAX_TREES, Math.round(N*W*0.006));
+  const count=Math.round(base*densityFactor*(0.85+Math.random()*0.3));
+  let tries=0;
+  while(trees.length<count && tries<count*12){
+    tries++;
+    let x,y,species,big;
+    if(clusters.length && Math.random()<0.85){
+      const c=clusters[Math.floor(Math.random()*clusters.length)];
+      const ang=Math.random()*Math.PI*2, rad=Math.random()*c.radius;
+      x=Math.round(c.cx+Math.cos(ang)*rad);
+      y=Math.round(c.cy+Math.sin(ang)*rad);
+      species = Math.random()<0.8 ? c.species : TREE_SPECIES[Math.floor(Math.random()*TREE_SPECIES.length)];
+      big = Math.random() < Math.max(c.bigCopse?0.65:0.12, bigBias);
+    } else {
+      x=Math.floor(Math.random()*N); y=Math.floor(Math.random()*W);
+      species=TREE_SPECIES[Math.floor(Math.random()*TREE_SPECIES.length)];
+      big = Math.random() < bigBias;
+    }
+    if(x<0||x>=N||y<0||y>=W) continue;
+    if(grid[x][y].water || grid[x][y].oob) continue;
+    if(Math.hypot(x-tee.x,y-tee.y)<3 || Math.hypot(x-basket.x,y-basket.y)<3) continue;
+    const scale = big ? (1.0+Math.random()*0.5) : (0.7+Math.random()*0.6);
+    trees.push({x,y,h:grid[x][y].h, species, big, scale, rotY:Math.random()*Math.PI*2});
+  }
+  placeEdgeTrees();
+}
+function placeEdgeTrees(){
+  const boundaryCells=[];
+  for(let x=0;x<N;x++)for(let y=0;y<W;y++){
+    if(grid[x][y].oob || grid[x][y].water) continue;
+    let nearEdge=false;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=x+dx, ny=y+dy;
+      if(nx<0||nx>=N||ny<0||ny>=W||grid[nx][ny].oob){ nearEdge=true; break; }
+    }
+    if(nearEdge) boundaryCells.push({x,y});
+  }
+  if(!boundaryCells.length) return;
+  const edgeCount=Math.min(boundaryCells.length, 20+Math.floor(Math.random()*25));
+  for(let i=0;i<edgeCount;i++){
+    const c=boundaryCells[Math.floor(Math.random()*boundaryCells.length)];
+    if(Math.hypot(c.x-tee.x,c.y-tee.y)<3 || Math.hypot(c.x-basket.x,c.y-basket.y)<3) continue;
+    const species=TREE_SPECIES[Math.floor(Math.random()*TREE_SPECIES.length)];
+    const big=Math.random()<0.15;
+    const scale=big?(1.0+Math.random()*0.5):(0.7+Math.random()*0.6);
+    trees.push({x:c.x,y:c.y,h:grid[c.x][c.y].h, species, big, scale, rotY:Math.random()*Math.PI*2});
+  }
+}
+
+function buildGrid(){
+  N=Math.round(BASE_N*(1+Math.random()*0.5));
+  W=Math.round(BASE_W*(1+Math.random()*0.5));
+  const terrainType=pickTerrainType();
+  let mainPath=null, tribPaths=[], hillPeaks=null;
+
+  if(terrainType==='hills'){
+    hillPeaks=genHillPeaks();
+  } else {
+    mainPath=genRiverPathDiagonal();
+    tribPaths=genTributaryPaths(mainPath, 2+Math.floor(Math.random()*2));
+  }
+
+  if(terrainType!=='hills'){
+    const networkCells=mainPath.map(p=>[p.x,p.y]);
+    tribPaths.forEach(p=>p.forEach(pt=>networkCells.push([pt.x,pt.y])));
+    distField=computeDistField(networkCells);
+  }
+
+  grid=[];
+  for(let x=0;x<N;x++){
+    grid[x]=[];
+    for(let y=0;y<W;y++) grid[x][y]={h:terrainType==='hills'?hillsHeightAt(x,y,hillPeaks):heightAt(x,y),water:false};
+  }
+
+  if(terrainType==='wet'){
+    markRiver(mainPath, 1);
+    tribPaths.forEach(p=>markRiver(p, 0));
+  }
+  const basin=findFarBasin();
+  if(basin) floodPond(basin.x, basin.y, 10+Math.floor(Math.random()*12));
+
+  const visited=Array.from({length:N},()=>new Array(W).fill(false));
+  for(let x=0;x<N;x++)for(let y=0;y<W;y++){
+    if(grid[x][y].water && !visited[x][y]){
+      const comp=[];
+      const queue=[[x,y]];
+      visited[x][y]=true;
+      while(queue.length){
+        const [cx,cy]=queue.shift();
+        comp.push([cx,cy]);
+        for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
+          if(ox===0&&oy===0) continue;
+          const gx=cx+ox,gy=cy+oy;
+          if(gx<0||gy<0||gx>=N||gy>=W) continue;
+          if(grid[gx][gy].water && !visited[gx][gy]){ visited[gx][gy]=true; queue.push([gx,gy]); }
+        }
+      }
+      let bankSum=0, bankSamples=0;
+      for(const [cx,cy] of comp){
+        for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
+          const gx=cx+ox,gy=cy+oy;
+          if(gx<0||gy<0||gx>=N||gy>=W) continue;
+          const n=grid[gx][gy];
+          if(!n.water){ bankSum+=n.h; bankSamples++; }
+        }
+      }
+      const avgBank = bankSamples ? bankSum/bankSamples : 1;
+      const level=Math.max(0,Math.round(avgBank)-1);
+      for(const [cx,cy] of comp){
+        let waterNeighbors=0;
+        for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
+          if(ox===0&&oy===0) continue;
+          const gx=cx+ox,gy=cy+oy;
+          if(gx<0||gy<0||gx>=N||gy>=W) continue;
+          if(grid[gx][gy].water) waterNeighbors++;
+        }
+        const c=grid[cx][cy];
+        c.wlevel=level;
+        c.h=waterNeighbors>=6 ? Math.max(0,level-1) : level;
+      }
+    }
+  }
+
+  placeTeeBasket();
+  markBoundary();
+  placeTrees();
+
+}
+
+const geo=new THREE.BoxGeometry(1,1,1);
+function shade(t){
+  const c0=[0x4b,0x43,0x34], c1=[0x8c,0x86,0x64];
+  const r=Math.round(c0[0]+(c1[0]-c0[0])*t), g=Math.round(c0[1]+(c1[1]-c0[1])*t), b=Math.round(c0[2]+(c1[2]-c0[2])*t);
+  return (r<<16)|(g<<8)|b;
+}
+const landColors=Array.from({length:MAXH+1},(_,i)=>shade(i/MAXH));
+const bedColor=0xb8a06c, waterColor=0x2f7fd1;
+
+function mkMesh(color, opts){
+  const mat=new THREE.MeshLambertMaterial(Object.assign({color},opts||{}));
+  const m=new THREE.InstancedMesh(geo, mat, CAP);
+  m.count=0;
+  scene.add(m);
+  return m;
+}
+const landMeshes=landColors.map(c=>mkMesh(c));
+const bedMesh=mkMesh(bedColor);
+const waterMesh=mkMesh(waterColor,{transparent:true,opacity:0.75});
+
+const underMesh=new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({color:landColors[0]}), CAP);
+underMesh.count=0;
+scene.add(underMesh);
+function updateUnderLayer(){
+  let i=0;
+  for(let x=0;x<N;x++)for(let y=0;y<W;y++){
+    if(grid[x][y].oob) continue;
+    mtx.compose(new THREE.Vector3(x*CELL,-0.1,y*CELL), new THREE.Quaternion(), new THREE.Vector3(1.1,0.3,1.1));
+    underMesh.setMatrixAt(i++, mtx);
+  }
+  underMesh.count=i;
+  underMesh.instanceMatrix.needsUpdate=true;
+}
+
+const VOX=0.4;
+function voxKeyT(x,y,z){ return x+','+y+','+z; }
+const VDIRS=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+function floodKeepT(voxMap, seedKey){
+  const visited=new Set([seedKey]), queue=[seedKey];
+  let qi=0;
+  while(qi<queue.length){
+    const [x,y,z]=queue[qi++].split(',').map(Number);
+    for(const [dx,dy,dz] of VDIRS){
+      const nk=voxKeyT(x+dx,y+dy,z+dz);
+      if(voxMap.has(nk)&&!visited.has(nk)){ visited.add(nk); queue.push(nk); }
+    }
+  }
+  const out=new Map();
+  visited.forEach(k=>{ if(voxMap.has(k)) out.set(k,voxMap.get(k)); });
+  return out;
+}
+const TRUNK_CELLS_1=[[0,0]], TRUNK_CELLS_2=[[0,0],[1,0],[0,1],[1,1]];
+function addTrunkCells(list, big, trunkH){
+  const cells = big? TRUNK_CELLS_2 : TRUNK_CELLS_1;
+  for(const [tx,tz] of cells) for(let y=0;y<trunkH;y++) list.push({dx:tx,dy:y,dz:tz,trunk:true});
+}
+function genPineVox(big){
+  const trunkH=big?7:4, list=[];
+  addTrunkCells(list,big,trunkH);
+  const layers=big?15:11, baseR=big?5:3.5;
+  for(let i=0;i<layers;i++){
+    const y=trunkH+i;
+    const r=Math.max(0, Math.round(baseR*(1-i/layers)));
+    for(let dx=-r;dx<=r;dx++)for(let dz=-r;dz<=r;dz++){
+      if(dx*dx+dz*dz<=r*r+0.6) list.push({dx,dy:y,dz,trunk:false});
+    }
+  }
+  list.push({dx:0,dy:trunkH+layers,dz:0,trunk:false});
+  return list;
+}
+function genOakVox(big){
+  const trunkH=big?6:3, rx=big?6:4, ry=big?5:3, rz=big?6:4, cy=trunkH+ry-1;
+  const vox=new Map();
+  for(let dx=-rx;dx<=rx;dx++)for(let dy=-ry;dy<=ry;dy++)for(let dz=-rz;dz<=rz;dz++){
+    const d=(dx*dx)/(rx*rx)+(dy*dy)/(ry*ry)+(dz*dz)/(rz*rz);
+    const isCenter=(dx===0&&dy===0&&dz===0);
+    if(d<=1 && (isCenter||Math.random()>0.12)) vox.set(voxKeyT(dx,cy+dy,dz),true);
+  }
+  const keys=[...vox.keys()];
+  for(let s=0;s<(big?22:14);s++){
+    const base=keys[Math.floor(Math.random()*keys.length)].split(',').map(Number);
+    const [dx,dy,dz]=VDIRS[Math.floor(Math.random()*VDIRS.length)];
+    const nk=voxKeyT(base[0]+dx,base[1]+dy,base[2]+dz);
+    if(!vox.has(nk)) vox.set(nk,true);
+  }
+  const connected=floodKeepT(vox, voxKeyT(0,cy,0));
+  const list=[];
+  addTrunkCells(list,big,trunkH);
+  connected.forEach((_,k)=>{ const [x,y,z]=k.split(',').map(Number); list.push({dx:x,dy:y,dz:z,trunk:false}); });
+  return list;
+}
+function genMapleVox(big){
+  const trunkH=big?7:4, rx=big?3.5:2.3, ry=big?8:5, rz=big?3.5:2.3, cy=trunkH+ry-1;
+  const RX=Math.ceil(rx), RY=Math.ceil(ry), RZ=Math.ceil(rz);
+  const vox=new Map();
+  for(let dx=-RX;dx<=RX;dx++)for(let dy=-RY;dy<=RY;dy++)for(let dz=-RZ;dz<=RZ;dz++){
+    const d=(dx*dx)/(rx*rx)+(dy*dy)/(ry*ry)+(dz*dz)/(rz*rz);
+    const isCenter=(dx===0&&dy===0&&dz===0);
+    if(d<=1 && (isCenter||Math.random()>0.1)) vox.set(voxKeyT(dx,cy+dy,dz),true);
+  }
+  const connected=floodKeepT(vox, voxKeyT(0,cy,0));
+  const list=[];
+  addTrunkCells(list,big,trunkH);
+  connected.forEach((_,k)=>{ const [x,y,z]=k.split(',').map(Number); list.push({dx:x,dy:y,dz:z,trunk:false}); });
+  return list;
+}
+const TREE_SPECIES=['pine','oak','maple'];
+const TREE_TIERS=['normal','big'];
+const TREE_COLORS={pine:{trunk:0x5c4632,canopy:0x2f6b34}, oak:{trunk:0x5c4632,canopy:0x4f7a3a}, maple:{trunk:0x5c4632,canopy:0x7a9a3f}};
+const TREE_PATTERNS={};
+TREE_SPECIES.forEach(sp=>{
+  TREE_PATTERNS[sp]={normal: sp==='pine'?genPineVox(false):sp==='oak'?genOakVox(false):genMapleVox(false),
+                      big:    sp==='pine'?genPineVox(true): sp==='oak'?genOakVox(true): genMapleVox(true)};
+});
+function computeTreeCollisionProfile(pattern){
+  const trunkCells=pattern.filter(v=>v.trunk), canopyCells=pattern.filter(v=>!v.trunk);
+  const trunkH=trunkCells.length?Math.max(...trunkCells.map(v=>v.dy))+1:1;
+  let trunkR=0.6;
+  if(trunkCells.length){
+    const xs=trunkCells.map(v=>v.dx), zs=trunkCells.map(v=>v.dz);
+    const cx=(Math.min(...xs)+Math.max(...xs))/2, cz=(Math.min(...zs)+Math.max(...zs))/2;
+    trunkR=Math.max(...trunkCells.map(v=>Math.hypot(v.dx-cx,v.dz-cz)))+0.6;
+  }
+  const canopyR=canopyCells.length?Math.max(...canopyCells.map(v=>Math.hypot(v.dx,v.dz)))+0.5:2;
+  const canopyYmin=canopyCells.length?Math.min(...canopyCells.map(v=>v.dy)):trunkH;
+  const canopyYmax=canopyCells.length?Math.max(...canopyCells.map(v=>v.dy))+1:trunkH+1;
+  return {trunkR, trunkH, canopyR, canopyYmin, canopyYmax};
+}
+const TREE_COLLISION={};
+TREE_SPECIES.forEach(sp=>{
+  TREE_COLLISION[sp]={};
+  TREE_TIERS.forEach(tier=>{ TREE_COLLISION[sp][tier]=computeTreeCollisionProfile(TREE_PATTERNS[sp][tier]); });
+});
+const MAX_TREES=180, MAX_CAP=420;
+function jitterColor(c,amt){
+  const r=((c>>16)&255)+Math.round((Math.random()-0.5)*amt);
+  const g=((c>>8)&255)+Math.round((Math.random()-0.5)*amt);
+  const b=(c&255)+Math.round((Math.random()-0.5)*amt);
+  const clamp=v=>Math.max(0,Math.min(255,v));
+  return (clamp(r)<<16)|(clamp(g)<<8)|clamp(b);
+}
+const TREE_VARIANTS=3;
+const treeMeshes={};
+TREE_SPECIES.forEach(sp=>{
+  treeMeshes[sp]={};
+  TREE_TIERS.forEach(tier=>{
+    const pattern=TREE_PATTERNS[sp][tier];
+    const trunkCap=Math.max(1, MAX_CAP*pattern.filter(v=>v.trunk).length);
+    const canopyCap=Math.max(1, MAX_CAP*pattern.filter(v=>!v.trunk).length);
+    const trunkMeshes=[], canopyMeshes=[];
+    for(let v=0;v<TREE_VARIANTS;v++){
+      const tMesh=new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({color:jitterColor(TREE_COLORS[sp].trunk,18)}), trunkCap);
+      const cMesh=new THREE.InstancedMesh(geo, new THREE.MeshLambertMaterial({color:jitterColor(TREE_COLORS[sp].canopy,24)}), canopyCap);
+      tMesh.count=0; cMesh.count=0;
+      scene.add(tMesh); scene.add(cMesh);
+      trunkMeshes.push(tMesh); canopyMeshes.push(cMesh);
+    }
+    treeMeshes[sp][tier]={trunk:trunkMeshes, canopy:canopyMeshes};
+  });
+});
+
+const BEACON_H=30, BEACON_MS=1200;
+const beaconGeo=new THREE.CylinderGeometry(1.2,1.2,BEACON_H,12,1,true);
+beaconGeo.translate(0,BEACON_H/2,0);
+const teeBeacon=new THREE.Mesh(beaconGeo, new THREE.MeshBasicMaterial({color:0x1E3A8A,transparent:true,opacity:0,side:THREE.DoubleSide}));
+const pinBeacon=new THREE.Mesh(beaconGeo, new THREE.MeshBasicMaterial({color:0xD01012,transparent:true,opacity:0,side:THREE.DoubleSide}));
+scene.add(teeBeacon); scene.add(pinBeacon);
+let beaconStart=0;
+function spawnBeacons(){
+  const th=grid[tee.x][tee.y].h, bh=grid[basket.x][basket.y].h;
+  teeBeacon.position.set(tee.x*CELL, th, tee.y*CELL);
+  pinBeacon.position.set(basket.x*CELL, bh, basket.y*CELL);
+  teeBeacon.scale.y=1; pinBeacon.scale.y=1;
+  teeBeacon.material.opacity=0.6; pinBeacon.material.opacity=0.6;
+  beaconStart=performance.now();
+}
+
+let teeMesh=null, poleMesh=null;
+const BASKET_CATCH_R=1.8, BASKET_CATCH_YMIN=1.0, BASKET_CATCH_YMAX=3.4, BASKET_APPROACH_R=BASKET_CATCH_R+6;
+const catchZoneGeo=new THREE.CylinderGeometry(BASKET_CATCH_R,BASKET_CATCH_R,BASKET_CATCH_YMAX-BASKET_CATCH_YMIN,16,1,true);
+let catchZoneMesh=null;
+function placeMarkers(){
+  if(teeMesh){ scene.remove(teeMesh); scene.remove(poleMesh); scene.remove(catchZoneMesh); }
+  const th=grid[tee.x][tee.y].h;
+  teeMesh=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.15,1.6), new THREE.MeshLambertMaterial({color:0x1E3A8A}));
+  teeMesh.position.set(tee.x*CELL, th+0.08, tee.y*CELL);
+  scene.add(teeMesh);
+  const bh=grid[basket.x][basket.y].h;
+  const poleH=BASKET_CATCH_YMAX+0.4;
+  poleMesh=new THREE.Mesh(new THREE.CylinderGeometry(0.06,0.06,poleH,6), new THREE.MeshLambertMaterial({color:0x888888}));
+  poleMesh.position.set(basket.x*CELL, bh+poleH/2, basket.y*CELL);
+  scene.add(poleMesh);
+  catchZoneMesh=new THREE.Mesh(catchZoneGeo, new THREE.MeshBasicMaterial({color:0xD01012,transparent:true,opacity:0.3,side:THREE.DoubleSide}));
+  catchZoneMesh.position.set(basket.x*CELL, bh+(BASKET_CATCH_YMIN+BASKET_CATCH_YMAX)/2, basket.y*CELL);
+  scene.add(catchZoneMesh);
+}
+
+const mtx=new THREE.Matrix4();
+const UP_AXIS=new THREE.Vector3(0,1,0);
+const jitterQuat=new THREE.Quaternion();
+function setInst(mesh, idx, x, h, z){
+  const jY=(Math.random()-0.5)*0.24;
+  const jOff=(Math.random()-0.5)*0.06;
+  const jScale=0.90+Math.random()*0.08;
+  jitterQuat.setFromAxisAngle(UP_AXIS, jY);
+  mtx.compose(
+    new THREE.Vector3(x*CELL, h/2+jOff, z*CELL),
+    jitterQuat,
+    new THREE.Vector3(jScale, Math.max(h,0.15), jScale)
+  );
+  mesh.setMatrixAt(idx, mtx);
+}
+
+function rebuildTerrain(){
+  updateUnderLayer();
+  const buckets=landColors.map(()=>[]);
+  const bed=[], water=[];
+  for(let x=0;x<N;x++)for(let y=0;y<W;y++){
+    const c=grid[x][y];
+    if(c.oob) continue;
+    if(c.water){ bed.push({x,y,h:c.h}); water.push({x,y,h:c.h,w:c.wlevel}); }
+    else buckets[c.h].push({x,y,h:c.h});
+  }
+  buckets.forEach((list,hi)=>{
+    const m=landMeshes[hi];
+    list.forEach((cell,i)=>setInst(m, i, cell.x, cell.h, cell.y));
+    m.count=list.length; m.instanceMatrix.needsUpdate=true;
+  });
+  bed.forEach((cell,i)=>setInst(bedMesh, i, cell.x, cell.h, cell.y));
+  bedMesh.count=bed.length; bedMesh.instanceMatrix.needsUpdate=true;
+  const WATER_T=0.2;
+  water.forEach((cell,i)=>{
+    mtx.compose(
+      new THREE.Vector3(cell.x*CELL, cell.w+WATER_T/2, cell.y*CELL),
+      new THREE.Quaternion(), new THREE.Vector3(0.95,WATER_T,0.95));
+    waterMesh.setMatrixAt(i, mtx);
+  });
+  waterMesh.count=water.length; waterMesh.instanceMatrix.needsUpdate=true;
+
+  const trunkIdx={}, canopyIdx={};
+  TREE_SPECIES.forEach(sp=>{
+    trunkIdx[sp]={}; canopyIdx[sp]={};
+    TREE_TIERS.forEach(t=>{ trunkIdx[sp][t]=[0,0,0]; canopyIdx[sp][t]=[0,0,0]; });
+  });
+  trees.forEach(t=>{
+    const tier=t.big?'big':'normal';
+    const pat=TREE_PATTERNS[t.species][tier], meshes=treeMeshes[t.species][tier];
+    const cosR=Math.cos(t.rotY), sinR=Math.sin(t.rotY), vs=VOX*t.scale;
+    pat.forEach(v=>{
+      const rx=v.dx*cosR - v.dz*sinR, rz=v.dx*sinR + v.dz*cosR;
+      const px=t.x*CELL + rx*vs, pz=t.y*CELL + rz*vs, py=t.h + v.dy*vs + vs/2;
+      const s=vs*0.92;
+      mtx.compose(new THREE.Vector3(px,py,pz), new THREE.Quaternion(), new THREE.Vector3(s,s,s));
+      const variant=Math.floor(Math.random()*TREE_VARIANTS);
+      if(v.trunk){ meshes.trunk[variant].setMatrixAt(trunkIdx[t.species][tier][variant]++, mtx); }
+      else{ meshes.canopy[variant].setMatrixAt(canopyIdx[t.species][tier][variant]++, mtx); }
+    });
+  });
+  TREE_SPECIES.forEach(sp=>TREE_TIERS.forEach(tier=>{
+    const m=treeMeshes[sp][tier];
+    for(let v=0;v<TREE_VARIANTS;v++){
+      m.trunk[v].count=trunkIdx[sp][tier][v]; m.trunk[v].instanceMatrix.needsUpdate=true;
+      m.canopy[v].count=canopyIdx[sp][tier][v]; m.canopy[v].instanceMatrix.needsUpdate=true;
+    }
+  }));
+
+  placeMarkers();
+  spawnBeacons();
+  throwFrom={x:tee.x,y:tee.y};
+  discMesh.position.set(tee.x*CELL, grid[tee.x][tee.y].h+0.1, tee.y*CELL);
+  discMesh.visible=true;
+}
+
+function regenerateCourse(){
+  seed=Math.random()*1000;
+  buildGrid();
+  target.set(N/2,0,W/2);
+  radius=computeFitRadius();
+  updateCam();
+  rebuildTerrain();
+  resetThrowUI();
+  throwCount=0;
+  updateHoleInfo(); updateScorecard();
+}
+document.getElementById('regen').addEventListener('click', regenerateCourse);
+document.getElementById('nextHoleBtn').addEventListener('click',()=>{
+  scorecard.push({hole:holeNumber, throws:throwCount});
+  holeNumber++;
+  document.getElementById('nextHoleBtn').style.display='none';
+  regenerateCourse();
+});
+
+buildGrid();
+target.set(N/2,0,W/2);
+radius=computeFitRadius();
+updateCam();
+rebuildTerrain();
+updateHoleInfo();
+
+let frames=0, fpsTime=performance.now();
+function updatePerf(){
+  frames++;
+  const now=performance.now();
+  if(now-fpsTime>=500){
+    document.getElementById('fps').textContent='FPS: '+Math.round(frames*1000/(now-fpsTime));
+    frames=0; fpsTime=now;
+    const totalInst = landMeshes.reduce((s,m)=>s+m.count,0)+bedMesh.count+waterMesh.count;
+    document.getElementById('cells').textContent='Cells: '+(N*W);
+    document.getElementById('insts').textContent='Instances: '+totalInst;
+    document.getElementById('treecount').textContent='Trees: '+trees.length;
+  }
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  const now=performance.now();
+  if(throwMode==='charging'){
+    const cf=Math.min(1,(now-chargeStart)/MAX_CHARGE_MS);
+    const fill=document.getElementById('chargefill');
+    fill.style.width=(cf*100)+'%';
+    fill.style.background=cf>=0.95?'#e53935':(cf>0.6?'#fbc02d':'#4caf50');
+    fill.style.opacity=cf>=0.98?((Math.floor(now/120)%2)?1:0.4):1;
+  }
+  if(teeBeacon.material.opacity>0){
+    const bt=Math.min(1,(now-beaconStart)/BEACON_MS);
+    const op=0.6*(1-bt), sy=Math.max(0.001,1-bt);
+    teeBeacon.material.opacity=op; pinBeacon.material.opacity=op;
+    teeBeacon.scale.y=sy; pinBeacon.scale.y=sy;
+  }
+  if(camPanActive){
+    const pt=Math.min(1,(now-camPanStart)/CAM_PAN_MS);
+    const st=pt*pt*(3-2*pt);
+    target.lerpVectors(camPanFrom, camPanTo, st);
+    radius=camPanFromR+(camPanToR-camPanFromR)*st;
+    updateCam();
+    if(pt>=1) camPanActive=false;
+  }
+  if(throwMode==='typing' && now>windowEnd) resolveThrow();
+  if(throwMode==='flying'){
+    const s=Math.min(1,(now-flightStart)/FLIGHT_MS);
+    const p=pathAt(s);
+    discMesh.position.set(p.x,p.y,p.z);
+    addTrailPoint(p);
+    const horizD=Math.hypot(p.x-basket.x*CELL, p.z-basket.y*CELL);
+    let caught=false;
+    if(horizD<=BASKET_APPROACH_R){
+      const bh=grid[basket.x][basket.y].h, relY=p.y-bh;
+      if(horizD<=BASKET_CATCH_R && relY>=BASKET_CATCH_YMIN && relY<=BASKET_CATCH_YMAX){ holeOut(); caught=true; }
+    }
+    if(!caught && s>=1) finishFlight();
+  }
+  renderer.render(scene, camera);
+  updatePerf();
+}
+animate();
+</script>
+</body>
+</html>

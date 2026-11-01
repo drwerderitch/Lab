@@ -177,7 +177,7 @@ document.querySelectorAll('.tutDemoBtn').forEach(btn=>{
 });
 
 let throwMode='idle';
-let aimYaw=0, elevAngle=0.35;
+let aimYaw=0, aimYawStart=0, elevAngle=0.35;
 let aimDown=false, aimStartX=0, aimStartY=0;
 let chargeStart=0, chargeFraction=0;
 let throwFrom=null;
@@ -300,7 +300,7 @@ renderer.domElement.addEventListener('mousedown',e=>{
         throwFrom={x:tee.x,y:tee.y};
       }
       throwMode='aiming'; aimDown=true; aimStartX=e.clientX; aimStartY=e.clientY;
-      aimYaw=0; elevAngle=0.35;
+      aimYaw=Math.atan2(-Math.cos(theta), -Math.sin(theta)); aimYawStart=aimYaw; elevAngle=0.35;
       if(camPanTimer){ clearTimeout(camPanTimer); camPanTimer=null; }
       camPanActive=false;
       document.getElementById('kbgraphic').style.display='block';
@@ -323,7 +323,7 @@ window.addEventListener('mouseup',()=>{
 window.addEventListener('mousemove',e=>{
   if(throwMode==='aiming'&&aimDown){
     const dx=e.clientX-aimStartX, dy=e.clientY-aimStartY;
-    aimYaw=Math.max(-0.6,Math.min(0.6,dx*0.003));
+    aimYaw=aimYawStart+dx*0.012;
     elevAngle=Math.max(0.1,Math.min(1.0,0.35-dy*0.002));
     updateAimArrow();
     return;
